@@ -1,0 +1,16 @@
+[package]
+name = "t-oc"
+version = "1.0.0"
+authors= [ "software9119.technology" ]
+edition = "2021"
+description = "Trie Occurence Counter is frequency dictionary for any type implementing `Iterator<Item = char>`."
+readme = "./README.md"
+homepage = "https://github.com/bravequickcleverfibreyarn/t-oc"
+repository = "https://github.com/bravequickcleverfibreyarn/t-oc"
+license = "MIT"
+keywords = ["frequency-dictionary","repetition-dictionary"]
+categories = ["algorithms", "data-structure"]
+documentation = "https://docs.rs/t-oc/latest/t-oc/"
+
+[features]
+test-ext = []
