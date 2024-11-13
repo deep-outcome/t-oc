@@ -8,7 +8,7 @@ readme = "./README.md"
 homepage = "https://github.com/bravequickcleverfibreyarn/t-oc"
 repository = "https://github.com/bravequickcleverfibreyarn/t-oc"
 license = "MIT"
-keywords = ["frequency-dictionary","repetition-dictionary"]
+keywords = ["frequency-dictionary","repetition-dictionary","retrieval-tree","trie"]
 categories = ["algorithms", "data-structure"]
 documentation = "https://docs.rs/t-oc/latest/t_oc/"
 
