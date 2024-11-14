@@ -1,5 +1,5 @@
 # t-oc
- - trie occurrence counter is frequency dictionary that use any `impl Iterator<Item = char>` type as occurrent
+ - trie occurrence counter is frequency dictionary that uses any `impl Iterator<Item = char>` type as occurrent
  - since its flexibility it allows to count _apples_ with _pears_ without hassle
 
 

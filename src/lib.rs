@@ -1,4 +1,4 @@
-//! Trie Occurence Counter is frequency dictionary that uses any `impl Iterator<Item = char>` type as occurrent.
+//! Trie Occurrence Counter is frequency dictionary that uses any `impl Iterator<Item = char>` type as occurrent.
 //!
 //! Support for English letters A–Za–z OOB.
 
@@ -187,7 +187,7 @@ impl<'a> TraRes<'a> {
     }
 }
 
-/// Trie Occurence Counter is frequency dictionary that uses any `impl Iterator<Item = char>` type as occurrent.
+/// Trie Occurrence Counter is frequency dictionary that uses any `impl Iterator<Item = char>` type as occurrent.
 ///
 /// OOB English letters A–Za–z support only.
 ///
