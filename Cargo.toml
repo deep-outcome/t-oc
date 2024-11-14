@@ -9,7 +9,7 @@ homepage = "https://github.com/bravequickcleverfibreyarn/t-oc"
 repository = "https://github.com/bravequickcleverfibreyarn/t-oc"
 license = "MIT"
 keywords = ["frequency-dict","repetition-dict","retrieval-tree","trie"]
-categories = ["algorithms", "data-structure"]
+categories = ["algorithms", "data-structures"]
 documentation = "https://docs.rs/t-oc/latest/t_oc/"
 
 [features]
