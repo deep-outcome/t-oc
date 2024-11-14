@@ -369,11 +369,11 @@ impl Toc {
     /// Used to put new value for `occurrent` occurrences.
     ///
     /// If `VerRes::Ok(usize)`, `usize` is previous value.    
-    pub fn put(&mut self, occurrent: impl Iterator<Item = char>, set: usize) -> VerRes {
+    pub fn put(&mut self, occurrent: impl Iterator<Item = char>, val: usize) -> VerRes {
         let track_res = self.track(occurrent, false, true);
 
         if let TraRes::OkMut(l) = track_res {
-            let old = l.ct.replace(set);
+            let old = l.ct.replace(val);
             let old = unsafe { old.unwrap_unchecked() };
             VerRes::Ok(old)
         } else {
