@@ -41,7 +41,7 @@ fn test() {
     let mut toc = Toc::new_with(ix, ab);
 
     for n in nums {
-        toc.ins(UsizeCharIterator::new(n));
+        toc.ins(UsizeCharIterator::new(n), None);
     }
 
     assert_eq!(1, toc.acq(UsizeCharIterator::new(1)).unwrap());
