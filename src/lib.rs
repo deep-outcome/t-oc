@@ -416,8 +416,8 @@ impl Toc {
                 let alphabet = l.ab.as_ref().unwrap();
                 let mut remove_alphab = true;
 
-                for inx in 0..ALPHABET_LEN {
-                    let letter = &alphabet[inx];
+                for ix in 0..ALPHABET_LEN {
+                    let letter = &alphabet[ix];
 
                     if letter.ab() || letter.ct() {
                         remove_alphab = false;
@@ -441,8 +441,8 @@ impl Toc {
     }
 
     // - s is count of `char`s iterated over.
-    // - TC: Ω(s) when `tracing = true`, ϴ(s) othewise
-    // - SC: ϴ(s) when `tracing = true`, ϴ(0)
+    // - TC: Ω(s) when `tracing = true`, ϴ(s) otherwise
+    // - SC: ϴ(s) when `tracing = true`, ϴ(0) otherwise
     fn track(
         &mut self,
         mut occurrent: impl Iterator<Item = char>,

@@ -1,6 +1,6 @@
 [package]
 name = "t-oc"
-version = "1.0.0"
+version = "1.0.1"
 authors= [ "software9119.technology" ]
 edition = "2021"
 description = "Trie Occurrence Counter is frequency dictionary for any type implementing `Iterator<Item = char>`."
