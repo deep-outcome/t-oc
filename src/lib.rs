@@ -908,12 +908,12 @@ mod tests_of_units {
             fn overflow_wrap() {
                 let mut toc = Toc::new();
 
-                let key = || "a".chars();
+                let entry = || "a".chars();
 
-                _ = toc.ins(key(), None);
-                _ = toc.put(key(), usize::MAX);
-                _ = toc.ins(key(), None);
-                assert_eq!(VerRes::Ok(0), toc.acq(key()));
+                _ = toc.ins(entry(), None);
+                _ = toc.put(entry(), usize::MAX);
+                _ = toc.ins(entry(), None);
+                assert_eq!(VerRes::Ok(0), toc.acq(entry()));
             }
         }
 
@@ -1004,11 +1004,11 @@ mod tests_of_units {
 
             #[test]
             fn basic_test() {
-                let key = || "Keyword".chars();
+                let entry = || "Keyword".chars();
                 let mut toc = Toc::new();
-                toc.ins(key(), None);
+                toc.ins(entry(), None);
 
-                _ = toc.track(key(), true, false);
+                _ = toc.track(entry(), true, false);
 
                 assert_eq!(1, Toc::rem_actual(&mut toc.tr));
 
@@ -1108,12 +1108,12 @@ mod tests_of_units {
             #[test]
             #[cfg(feature = "test-ext")]
             fn singular_occurrent() {
-                let key = || "A".chars();
+                let entry = || "A".chars();
 
                 let mut toc = Toc::new();
 
-                _ = toc.ins(key(), None);
-                let res = toc.track(key(), true, false);
+                _ = toc.ins(entry(), None);
+                let res = toc.track(entry(), true, false);
 
                 if let TraRes::Ok(l) = res {
                     let l_val = l.val;
@@ -1132,13 +1132,13 @@ mod tests_of_units {
             #[test]
             #[cfg(feature = "test-ext")]
             fn tracing() {
-                let key = || "DictionaryLexicon".chars();
+                let entry = || "DictionaryLexicon".chars();
 
                 let mut toc = Toc::new();
-                toc.ins(key(), None);
-                _ = toc.track(key(), true, false);
+                toc.ins(entry(), None);
+                _ = toc.track(entry(), true, false);
 
-                let proof = key().collect::<Vec<char>>();
+                let proof = entry().collect::<Vec<char>>();
                 let tr = &toc.tr;
 
                 assert_eq!(proof.len(), tr.len());
@@ -1153,19 +1153,19 @@ mod tests_of_units {
             #[test]
             #[cfg(feature = "test-ext")]
             fn ok_variants() {
-                let key = || "Wordbook".chars();
+                let entry = || "Wordbook".chars();
                 let last = 'k';
 
                 let mut toc = Toc::new();
-                toc.ins(key(), None);
-                let res = toc.track(key(), false, false);
+                toc.ins(entry(), None);
+                let res = toc.track(entry(), false, false);
 
                 match res {
                     | TraRes::Ok(l) => assert_eq!(last, l.val),
                     | _ => panic!("TraRes::Ok(_) was expected, instead {:?}.", res),
                 }
 
-                let res = toc.track(key(), false, true);
+                let res = toc.track(entry(), false, true);
                 match res {
                     | TraRes::OkMut(l) => assert_eq!(last, l.val),
                     | _ => panic!("TraRes::OkMut(_) was expected, instead {:?}.", res),
