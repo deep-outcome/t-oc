@@ -200,14 +200,14 @@ impl<'a> TraRes<'a> {
 /// let mut toc = Toc::new();
 /// let occurrent = "true";
 ///
-/// toc.ins(occurrent.chars(), None);
-/// toc.ins(true.to_string().chars(), None);
+/// _ = toc.ins(occurrent.chars(), None);
+/// _ = toc.ins(true.to_string().chars(), None);
 ///
 /// assert_eq!(2, toc.acq(occurrent.chars()).unwrap());
 /// toc.put(occurrent.chars(), 15);
 /// assert_eq!(15, toc.acq(occurrent.chars()).unwrap());
 ///
-/// let catch = catch_unwind(move|| toc.ins("#&%".chars(), None));
+/// let catch = catch_unwind(move|| _ = toc.ins("#&%".chars(), None));
 /// assert!(catch.is_err());
 /// ```
 ///
@@ -252,10 +252,10 @@ impl Toc {
     /// let a = "&";
     /// let b = "|";
     /// let aba = "&|&";
-    /// toc.ins(a.chars(), None);
-    /// toc.ins(a.chars(), None);
-    /// toc.ins(b.chars(), None);
-    /// toc.ins(aba.chars(), None);
+    /// _ = toc.ins(a.chars(), None);
+    /// _ = toc.ins(a.chars(), None);
+    /// _ = toc.ins(b.chars(), None);
+    /// _ = toc.ins(aba.chars(), None);
     /// assert_eq!(2, toc.acq(a.chars()).unwrap());
     /// assert_eq!(1, toc.acq(aba.chars()).unwrap());
     pub fn new_with(ix: Ix, ab: Ab) -> Self {
@@ -1021,7 +1021,7 @@ mod tests_of_units {
             fn basic_test() {
                 let entry = || "Keyword".chars();
                 let mut toc = Toc::new();
-                toc.ins(entry(), None);
+                _ = toc.ins(entry(), None);
 
                 _ = toc.track(entry(), true, false);
 
@@ -1037,10 +1037,10 @@ mod tests_of_units {
                 let mut toc = Toc::new();
 
                 let outer = || "Keyword".chars();
-                toc.ins(outer(), None);
+                _ = toc.ins(outer(), None);
 
                 let inner = || "Key".chars();
-                toc.ins(inner(), None);
+                _ = toc.ins(inner(), None);
 
                 _ = toc.track(inner(), true, false);
 
@@ -1054,10 +1054,10 @@ mod tests_of_units {
                 let mut toc = Toc::new();
 
                 let peer = || "Keyworder".chars();
-                toc.ins(peer(), None);
+                _ = toc.ins(peer(), None);
 
                 let test = || "Keywordee".chars();
-                toc.ins(test(), None);
+                _ = toc.ins(test(), None);
 
                 _ = toc.track(test(), true, false);
 
@@ -1071,10 +1071,10 @@ mod tests_of_units {
                 let mut toc = Toc::new();
 
                 let peer = || "Keyworders".chars();
-                toc.ins(peer(), None);
+                _ = toc.ins(peer(), None);
 
                 let test = || "Keywordee".chars();
-                toc.ins(test(), None);
+                _ = toc.ins(test(), None);
 
                 _ = toc.track(test(), true, false);
 
@@ -1088,10 +1088,10 @@ mod tests_of_units {
                 let mut toc = Toc::new();
 
                 let above = || "Keyworder".chars();
-                toc.ins(above(), None);
+                _ = toc.ins(above(), None);
 
                 let under = || "Keyworders".chars();
-                toc.ins(under(), None);
+                _ = toc.ins(under(), None);
 
                 _ = toc.track(under(), true, false);
 
@@ -1150,7 +1150,7 @@ mod tests_of_units {
                 let entry = || "DictionaryLexicon".chars();
 
                 let mut toc = Toc::new();
-                toc.ins(entry(), None);
+                _ = toc.ins(entry(), None);
                 _ = toc.track(entry(), true, false);
 
                 let proof = entry().collect::<Vec<char>>();
@@ -1172,7 +1172,7 @@ mod tests_of_units {
                 let last = 'k';
 
                 let mut toc = Toc::new();
-                toc.ins(entry(), None);
+                _ = toc.ins(entry(), None);
                 let res = toc.track(entry(), false, false);
 
                 match res {
@@ -1193,7 +1193,7 @@ mod tests_of_units {
                 let bad_key = || "Wordbooks".chars();
 
                 let mut toc = Toc::new();
-                toc.ins(key(), None);
+                _ = toc.ins(key(), None);
                 let res = toc.track(bad_key(), false, false);
                 assert_eq!(TraRes::UnknownForAbsentPath, res);
             }
@@ -1204,7 +1204,7 @@ mod tests_of_units {
                 let bad_key = || "Wordbook".chars();
 
                 let mut toc = Toc::new();
-                toc.ins(key(), None);
+                _ = toc.ins(key(), None);
                 let res = toc.track(bad_key(), false, false);
                 assert_eq!(TraRes::UnknownForNotEntry, res);
             }
