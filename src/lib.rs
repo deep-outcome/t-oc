@@ -623,8 +623,7 @@ mod tests_of_units {
                     let result = catch_unwind(|| ix(c));
                     assert!(result.is_err());
 
-                    let err = result.err();
-                    let err = unsafe { err.unwrap_unchecked() };
+                    let err = unsafe { result.unwrap_err_unchecked() };
                     let downcast = err.downcast_ref::<String>().unwrap();
                     let proof =
                         format!("Index conversion failed because code point {cp} is unsupported.");
