@@ -15,7 +15,7 @@ pub struct Letter {
 }
 
 impl Letter {
-    fn new() -> Self {
+    const fn new() -> Self {
         Letter {
             #[cfg(test)]
             val: '💚',
@@ -24,11 +24,11 @@ impl Letter {
         }
     }
 
-    fn ab(&self) -> bool {
+    const fn ab(&self) -> bool {
         self.ab.is_some()
     }
 
-    fn ct(&self) -> bool {
+    const fn ct(&self) -> bool {
         self.ct.is_some()
     }
 }
