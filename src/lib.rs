@@ -267,7 +267,7 @@ impl Toc {
         }
     }
 
-    /// `Toc` uses internal buffer, to avoid excesive allocations and copying, which grows
+    /// `Toc` uses internal buffer, to avoid excessive allocations and copying, which grows
     /// over time due backtracing in `rem` method which backtraces whole path from entry
     /// node to root node.
     ///
