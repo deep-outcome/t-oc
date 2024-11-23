@@ -116,8 +116,8 @@ pub mod english_letters {
 #[derive(Debug)]
 #[derive(PartialEq, Eq)]
 pub enum InsRes {
-    /// Insertion accomplished.
-    Ok,
+    /// Insertion accomplished. Optionally carries previous value, based on its existence.
+    Ok(Option<usize>),
     /// Attempt to insert zero occurrent.
     ZeroLen,
 }
@@ -317,7 +317,7 @@ impl Toc {
     ///
     /// Optional `val` parameter can be used to insert exact value.
     ///
-    /// Return value is `InsRes::Ok` for non-zero `occurrent`.
+    /// Return value is `InsRes::Ok(Option<usize>)` for non-zero `occurrent` and holds previous value, if there was some.
     ///
     /// - SC: Θ(q) where q is number of unique nodes, i.e. `char`s in respective branches.
     pub fn ins(&mut self, mut occurrent: impl Iterator<Item = char>, val: Option<usize>) -> InsRes {
@@ -339,11 +339,18 @@ impl Toc {
             letter = &mut alphabet[ix(c)];
         }
 
-        let ct = letter.ct.get_or_insert(0);
+        let ct = letter.ct;
+        letter.ct = Some(if let Some(v) = val {
+            v
+        } else {
+            if let Some(c) = ct {
+                c.wrapping_add(1)
+            } else {
+                1
+            }
+        });
 
-        *ct = if let Some(v) = val { v } else { ct.wrapping_add(1) };
-
-        InsRes::Ok
+        InsRes::Ok(ct)
     }
 
     /// Used to acquire value for `occurrent`.
@@ -770,7 +777,7 @@ mod tests_of_units {
                 let entry = || "impreciseness".chars();
 
                 let mut toc = Toc::new();
-                assert_eq!(InsRes::Ok, toc.ins(entry(), None));
+                assert_eq!(InsRes::Ok(None), toc.ins(entry(), None));
 
                 let chars: Vec<char> = entry().collect();
                 let len = chars.len();
@@ -806,7 +813,7 @@ mod tests_of_units {
             #[test]
             fn singular_occurrent() {
                 let mut toc = Toc::new();
-                assert_eq!(InsRes::Ok, toc.ins("a".chars(), None));
+                assert_eq!(InsRes::Ok(None), toc.ins("a".chars(), None));
                 assert_eq!(Some(1), toc.rt[ix('a')].ct);
             }
 
@@ -815,8 +822,8 @@ mod tests_of_units {
                 let entry = || "impreciseness".chars();
 
                 let mut toc = Toc::new();
-                assert_eq!(InsRes::Ok, toc.ins(entry(), None));
-                assert_eq!(InsRes::Ok, toc.ins(entry(), None));
+                assert_eq!(InsRes::Ok(None), toc.ins(entry(), None));
+                assert_eq!(InsRes::Ok(Some(1)), toc.ins(entry(), None));
 
                 let chars: Vec<char> = entry().collect();
                 let len = chars.len();
@@ -849,7 +856,7 @@ mod tests_of_units {
                 const VAL: usize = 15;
 
                 let mut toc = Toc::new();
-                assert_eq!(InsRes::Ok, toc.ins(entry(), Some(VAL)));
+                assert_eq!(InsRes::Ok(None), toc.ins(entry(), Some(VAL)));
                 assert_eq!(VerRes::Ok(VAL), toc.acq(entry()));
             }
 
@@ -861,7 +868,7 @@ mod tests_of_units {
                 let mut toc = Toc::new();
                 _ = toc.ins(entry(), None);
 
-                assert_eq!(InsRes::Ok, toc.ins(entry(), Some(VAL)));
+                assert_eq!(InsRes::Ok(Some(1)), toc.ins(entry(), Some(VAL)));
                 assert_eq!(VerRes::Ok(VAL), toc.acq(entry()));
             }
 
@@ -895,9 +902,14 @@ mod tests_of_units {
 
                 let mut toc = Toc::new();
                 for (s, c) in strs {
-                    for _ in 0..c {
+                    for i in 0..c {
                         let res = toc.ins(s.chars(), None);
-                        assert_eq!(InsRes::Ok, res);
+                        let prev = if i > 0 {
+                            Some(i)
+                        } else {
+                            None
+                        };        
+                        assert_eq!(InsRes::Ok(prev), res);
                     }
                 }
 
