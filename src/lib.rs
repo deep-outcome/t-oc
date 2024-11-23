@@ -541,6 +541,8 @@ mod tests_of_units {
         #[test]
         fn ab() {
             let mut letter = Letter::new();
+            assert_eq!(false, letter.ab());
+
             letter.ab = Some(ab_fn());
             assert_eq!(true, letter.ab());
         }
@@ -548,6 +550,8 @@ mod tests_of_units {
         #[test]
         fn ct() {
             let mut letter = Letter::new();
+            assert_eq!(false, letter.ct());
+
             letter.ct = Some(0);
             assert_eq!(true, letter.ct());
         }
