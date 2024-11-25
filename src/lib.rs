@@ -1020,7 +1020,7 @@ mod tests_of_units {
 
             #[test]
             fn basic_test() {
-                let entry = || "Keyword".chars();
+                let entry = || "ABCxyz".chars();
                 let mut toc = Toc::new();
                 _ = toc.ins(entry(), None);
 
@@ -1029,7 +1029,7 @@ mod tests_of_units {
                 assert_eq!(1, Toc::rem_actual(&mut toc.tr));
 
                 #[allow(non_snake_case)]
-                let K = &toc.rt[ix('K')];
+                let K = &toc.rt[ix('A')];
                 assert_eq!(false, K.ab());
             }
 
@@ -1161,7 +1161,7 @@ mod tests_of_units {
 
                 for (x, &c) in proof.iter().enumerate() {
                     let l = tr[x];
-                    let l = unsafe { l.as_mut() }.unwrap();
+                    let l = unsafe { l.as_ref() }.unwrap();
                     assert_eq!(c, l.val);
                 }
             }
