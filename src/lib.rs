@@ -416,9 +416,7 @@ impl Toc {
         let mut trace = tr.iter_mut().map(|x| unsafe { x.as_mut() }.unwrap());
         let entry = trace.next_back().unwrap();
 
-        let ct = entry.ct;
-        let ct = unsafe { ct.unwrap_unchecked() };
-        entry.ct = None;
+        let ct = entry.ct.take();
 
         if !entry.ab() {
             while let Some(l) = trace.next_back() {
@@ -446,7 +444,7 @@ impl Toc {
             }
         }
 
-        ct
+        unsafe { ct.unwrap_unchecked() }
     }
 
     // - s is count of `char`s iterated over.
