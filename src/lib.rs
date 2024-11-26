@@ -122,6 +122,55 @@ pub enum InsRes {
     ZeroLen,
 }
 
+impl InsRes {
+    /// Returns `true` only for `InsRes::Ok(_)`.
+    pub const fn is_ok(&self) -> bool {
+        match self {
+            | InsRes::Ok(_) => true,
+            | _ => false,
+        }
+    }
+
+    /// Returns `true` only for `InsRes::Ok(Some(_))`.
+    pub const fn is_ok_some(&self) -> bool {
+        if let InsRes::Ok(opt) = self {
+            if let Some(_) = opt {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    /// Returns `usize` of `InsRes::Ok(Some(usize))` or _panics_ if:
+    /// - not that variant
+    /// - `Option<usize>` is `None`
+    pub const fn uproot_ok_some(&self) -> usize {
+        if let InsRes::Ok(opt) = self {
+            if let Some(n) = opt {
+                return *n;
+            }
+        }
+
+        panic!("Not InsRes::Ok(Some(_)) variant.")
+    }
+
+    /// Returns `usize` of `InsRes::Ok(Some(usize))` and does not _panic_ (UB) if:
+    /// - not that variant
+    /// - `Option<usize>` is `None`
+    ///
+    /// Check with `std::hint::unreachable_unchecked` for more information.
+    pub const unsafe fn uproot_ok_some_unchecked(&self) -> usize {
+        if let InsRes::Ok(opt) = self {
+            if let Some(n) = opt {
+                return *n;
+            }
+        }
+        // SAFETY: the safety contract must be upheld by the caller.
+        unsafe { std::hint::unreachable_unchecked() }
+    }
+}
+
 /// Versatile result enumeration.
 ///
 /// Used by various methods in versatile way.
@@ -137,7 +186,7 @@ pub enum VerRes {
 }
 
 impl VerRes {
-    /// Returns `true` for `VerRes::Ok(_)`.
+    /// Returns `true` only for `VerRes::Ok(_)`.
     pub const fn is_ok(&self) -> bool {
         match self {
             | VerRes::Ok(_) => true,
@@ -637,6 +686,56 @@ mod tests_of_units {
                 ];
                 ucs
             }
+        }
+    }
+
+    mod ins_res {
+        use crate::InsRes;
+
+        #[test]
+        fn is_ok() {
+            assert_eq!(true, InsRes::Ok(None).is_ok());
+            assert_eq!(false, InsRes::ZeroLen.is_ok());
+        }
+
+        #[test]
+        fn is_ok_some_some() {
+            assert_eq!(true, InsRes::Ok(Some(3)).is_ok_some());
+        }
+
+        #[test]
+        fn is_ok_some_none() {
+            assert_eq!(false, InsRes::Ok(None).is_ok_some());
+        }
+
+        #[test]
+        fn is_ok_some_not_ok() {
+            assert_eq!(false, InsRes::ZeroLen.is_ok_some());
+        }
+
+        #[test]
+        fn uproot_ok_some_some() {
+            let val = 3;
+            assert_eq!(val, InsRes::Ok(Some(val)).uproot_ok_some());
+        }
+
+        #[test]
+        #[should_panic(expected = "Not InsRes::Ok(Some(_)) variant.")]
+        fn uproot_ok_some_none() {
+            _ = InsRes::Ok(None).uproot_ok_some()
+        }
+
+        #[test]
+        #[should_panic(expected = "Not InsRes::Ok(Some(_)) variant.")]
+        fn uproot_ok_some_not_ok() {
+            _ = InsRes::ZeroLen.uproot_ok_some()
+        }
+
+        #[test]
+        fn uproot_ok_some_unchecked() {
+            let val = 3;
+            let uproot = unsafe { InsRes::Ok(Some(val)).uproot_ok_some_unchecked() };
+            assert_eq!(val, uproot);
         }
     }
 
