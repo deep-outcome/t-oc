@@ -146,7 +146,7 @@ impl VerRes {
     }
 
     /// Returns `usize` of `VerRes::Ok(usize)` or _panics_ if not that variant.
-    pub const fn unwrap(&self) -> usize {
+    pub const fn uproot(&self) -> usize {
         match self {
             | VerRes::Ok(res) => *res,
             | _ => panic!("Value is not `Ok(usize)` variant."),
@@ -156,7 +156,7 @@ impl VerRes {
     /// Returns `usize` of `VerRes::Ok(usize)` and does not _panic_ if not that variant (UB).
     ///
     /// Check with `std::hint::unreachable_unchecked` for more information.
-    pub const unsafe fn unwrap_unchecked(&self) -> usize {
+    pub const unsafe fn uproot_unchecked(&self) -> usize {
         match self {
             | VerRes::Ok(res) => *res,
             // SAFETY: the safety contract must be upheld by the caller.
@@ -203,9 +203,9 @@ impl<'a> TraRes<'a> {
 /// _ = toc.ins(occurrent.chars(), None);
 /// _ = toc.ins(true.to_string().chars(), None);
 ///
-/// assert_eq!(2, toc.acq(occurrent.chars()).unwrap());
+/// assert_eq!(2, toc.acq(occurrent.chars()).uproot());
 /// toc.put(occurrent.chars(), 15);
-/// assert_eq!(15, toc.acq(occurrent.chars()).unwrap());
+/// assert_eq!(15, toc.acq(occurrent.chars()).uproot());
 ///
 /// let catch = catch_unwind(move|| _ = toc.ins("#&%".chars(), None));
 /// assert!(catch.is_err());
@@ -256,8 +256,8 @@ impl Toc {
     /// _ = toc.ins(a.chars(), None);
     /// _ = toc.ins(b.chars(), None);
     /// _ = toc.ins(aba.chars(), None);
-    /// assert_eq!(2, toc.acq(a.chars()).unwrap());
-    /// assert_eq!(1, toc.acq(aba.chars()).unwrap());
+    /// assert_eq!(2, toc.acq(a.chars()).uproot());
+    /// assert_eq!(1, toc.acq(aba.chars()).uproot());
     pub fn new_with(ix: Ix, ab: Ab) -> Self {
         Self {
             rt: ab(),
@@ -651,20 +651,20 @@ mod tests_of_units {
         }
 
         #[test]
-        fn unwrap() {
-            assert_eq!(33, VerRes::Ok(33).unwrap());
+        fn uproot() {
+            assert_eq!(33, VerRes::Ok(33).uproot());
         }
 
         #[test]
         #[should_panic(expected = "Value is not `Ok(usize)` variant.")]
-        fn unwrap_panic() {
-            VerRes::ZeroLen.unwrap();
+        fn uproot_panic() {
+            VerRes::ZeroLen.uproot();
         }
 
         #[test]
-        fn unwrap_unchecked() {
+        fn uproot_unchecked() {
             const VAL: usize = 77;
-            let test = unsafe { VerRes::Ok(VAL).unwrap_unchecked() };
+            let test = unsafe { VerRes::Ok(VAL).uproot_unchecked() };
             assert_eq!(VAL, test);
         }
     }

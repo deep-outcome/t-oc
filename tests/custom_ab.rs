@@ -44,10 +44,10 @@ fn test() {
         _ = toc.ins(UsizeCharIterator::new(n), None);
     }
 
-    assert_eq!(1, toc.acq(UsizeCharIterator::new(1)).unwrap());
-    assert_eq!(2, toc.acq(UsizeCharIterator::new(2)).unwrap());
-    assert_eq!(3, toc.acq(UsizeCharIterator::new(3)).unwrap());
-    assert_eq!(3, toc.acq(UsizeCharIterator::new(7)).unwrap());
-    assert_eq!(2, toc.acq(UsizeCharIterator::new(8)).unwrap());
-    assert_eq!(1, toc.acq(UsizeCharIterator::new(9)).unwrap());
+    assert_eq!(1, toc.acq(UsizeCharIterator::new(1)).uproot());
+    assert_eq!(2, toc.acq(UsizeCharIterator::new(2)).uproot());
+    assert_eq!(3, toc.acq(UsizeCharIterator::new(3)).uproot());
+    assert_eq!(3, toc.acq(UsizeCharIterator::new(7)).uproot());
+    assert_eq!(2, toc.acq(UsizeCharIterator::new(8)).uproot());
+    assert_eq!(1, toc.acq(UsizeCharIterator::new(9)).uproot());
 }
