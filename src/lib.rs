@@ -56,7 +56,7 @@ pub fn ab(len: usize) -> Alphabet {
     #[cfg(feature = "test-ext")]
     let mut c = 'A' as u8;
 
-    for sc in ab.spare_capacity_mut() {
+    for sc in ab.spare_capacity_mut()[..len].iter_mut() {
         let mut _letter = sc.write(Letter::new());
 
         #[cfg(test)]
