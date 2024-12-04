@@ -29,11 +29,11 @@ assert!(catch.is_err());
 ### custom alphabet implementation
 
 - to use custom alphabet employ `Toc::new_with`
-- provide it with functions for alphabet generation and index conversion
+- provide it with function for index conversion and alphabet relevant length
 - see also example on `new_with`
 
 ```rust
-use t_oc::{Toc, Alphabet, ab as ab_fn};
+use t_oc::Toc;
 
 struct UsizeCharIterator {
     c: char,
@@ -65,15 +65,11 @@ fn ix(c: char) -> usize {
     c.to_digit(10).unwrap() as usize
 }
 
-fn ab() -> Alphabet {
-    ab_fn(10)
-}
-
 #[test]
 fn test() {
     let nums = [1, 2, 2, 3, 3, 3, 7, 7, 7, 8, 8, 9];
 
-    let mut toc = Toc::new_with(ix, ab);
+    let mut toc = Toc::new_with(ix, 10);
 
     for n in nums {
         _ = toc.ins(UsizeCharIterator::new(n), None);

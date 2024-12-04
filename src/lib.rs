@@ -3,11 +3,10 @@
 //! Support for English letters A–Za–z OOB.
 
 use std::vec::Vec;
-use crate::english_letters::ALPHABET_LEN;
 
 /// `Letter` is `Alphabet` element, represents tree node.
 #[cfg_attr(test, derive(PartialEq))]
-pub struct Letter {
+struct Letter {
     #[cfg(test)]
     val: char,
     ab: Option<Alphabet>,
@@ -34,21 +33,15 @@ impl Letter {
 }
 
 /// Tree node arms. Consists of `Letter`s.
-pub type Alphabet = Box<[Letter]>;
-/// Index conversion function. Tighten with `Alphabet`.
+type Alphabet = Box<[Letter]>;
+/// Index conversion function. Tighten with alphabet used.
 /// Returns corresponding `usize`d index of `char`.
 ///
 /// For details see `english_letters::ix` implementation.
 pub type Ix = fn(char) -> usize;
-/// Alphabet function. Constructs alphabet that supports chosen `char`s.
-///
-/// Not all arms necessarily have to logically exists.
-///
-/// For details see `english_letters::ab` implementation.
-pub type Ab = fn() -> Alphabet;
 
 /// Alphabet function, tree arms generation of length specified.
-pub fn ab(len: usize) -> Alphabet {
+fn ab(len: usize) -> Alphabet {
     let mut ab = Vec::new();
     ab.reserve_exact(len);
 
@@ -77,22 +70,15 @@ pub fn ab(len: usize) -> Alphabet {
     ab.into_boxed_slice()
 }
 
-/// Module contains functions for working with English alphabet letters, A-Za-z.
+/// Module for working with English alphabet letters, A-Za-z.
 ///
 /// For details see `Toc::new_with()`.
 pub mod english_letters {
-
-    use crate::{ab as ab_fn, Alphabet};
 
     /// 26
     pub const BASE_ALPHABET_LEN: usize = 26;
     /// 52
     pub const ALPHABET_LEN: usize = BASE_ALPHABET_LEN * 2;
-
-    /// `Alphabet` of English capital and small letters length.
-    pub fn ab() -> Alphabet {
-        ab_fn(ALPHABET_LEN)
-    }
 
     /// Index conversion function.
     pub fn ix(c: char) -> usize {
@@ -268,8 +254,8 @@ pub struct Toc {
     rt: Alphabet,
     // index fn
     ix: Ix,
-    // alphabet fn
-    ab: Ab,
+    // alphabet len
+    al: usize,
     // backtrace buff
     tr: Vec<*mut Letter>,
 }
@@ -278,17 +264,14 @@ impl Toc {
     /// Constructs default version of `Toc`, i.e. via
     /// `fn new_with()` with `english_letters::ab` and `english_letters::ix`.
     pub fn new() -> Self {
-        Self::new_with(english_letters::ix, english_letters::ab)
+        Self::new_with(english_letters::ix, english_letters::ALPHABET_LEN)
     }
 
     /// Allows to use custom alphabet different from default alphabet.
     ///
     /// ```
-    /// use t_oc::{ab as ab_fn, Alphabet, Toc};
+    /// use t_oc::Toc;
     ///
-    /// fn ab() -> Alphabet {
-    ///     ab_fn(2)
-    /// }
     /// fn ix(c: char) -> usize {
     ///     match c {
     ///         '&' => 0,
@@ -297,7 +280,9 @@ impl Toc {
     ///     }
     /// }
     ///
-    /// let mut toc = Toc::new_with(ix, ab);
+    /// let ab_len = 2;
+    ///
+    /// let mut toc = Toc::new_with(ix, ab_len);
     /// let a = "&";
     /// let b = "|";
     /// let aba = "&|&";
@@ -307,11 +292,11 @@ impl Toc {
     /// _ = toc.ins(aba.chars(), None);
     /// assert_eq!(2, toc.acq(a.chars()).uproot());
     /// assert_eq!(1, toc.acq(aba.chars()).uproot());
-    pub fn new_with(ix: Ix, ab: Ab) -> Self {
+    pub fn new_with(ix: Ix, ab_len: usize) -> Self {
         Self {
-            rt: ab(),
+            rt: ab(ab_len),
             ix,
-            ab,
+            al: ab_len,
             tr: Vec::new(),
         }
     }
@@ -379,12 +364,12 @@ impl Toc {
         let c = unsafe { c.unwrap_unchecked() };
 
         let ix = self.ix;
-        let ab = self.ab;
+        let al = self.al;
 
         let mut letter = &mut self.rt[ix(c)];
 
         while let Some(c) = occurrent.next() {
-            let alphabet = letter.ab.get_or_insert_with(|| ab());
+            let alphabet = letter.ab.get_or_insert_with(|| ab(al));
             letter = &mut alphabet[ix(c)];
         }
 
@@ -451,7 +436,7 @@ impl Toc {
     pub fn rem(&mut self, occurrent: impl Iterator<Item = char>) -> VerRes {
         let track_res = self.track(occurrent, true, false);
         let res = if let TraRes::Ok(_) = track_res {
-            let ct = Self::rem_actual(&mut self.tr);
+            let ct = Self::rem_actual(self);
             VerRes::Ok(ct)
         } else {
             track_res.ver_res()
@@ -461,8 +446,8 @@ impl Toc {
         res
     }
 
-    fn rem_actual(tr: &mut Vec<*mut Letter>) -> usize {
-        let mut trace = tr.iter_mut().map(|x| unsafe { x.as_mut() }.unwrap());
+    fn rem_actual(&mut self) -> usize {
+        let mut trace = self.tr.iter_mut().map(|x| unsafe { x.as_mut() }.unwrap());
         let entry = trace.next_back().unwrap();
 
         let ct = entry.ct.take();
@@ -472,7 +457,7 @@ impl Toc {
                 let alphabet = l.ab.as_ref().unwrap();
                 let mut remove_alphab = true;
 
-                for ix in 0..ALPHABET_LEN {
+                for ix in 0..self.al {
                     let letter = &alphabet[ix];
 
                     if letter.ab() || letter.ct() {
@@ -573,8 +558,7 @@ mod tests_of_units {
 
     mod letter {
 
-        use crate::Letter;
-        use crate::english_letters::ab as ab_fn;
+        use crate::{Letter, ab as ab_fn};
 
         #[test]
         fn new() {
@@ -590,7 +574,7 @@ mod tests_of_units {
             let mut letter = Letter::new();
             assert_eq!(false, letter.ab());
 
-            letter.ab = Some(ab_fn());
+            letter.ab = Some(ab_fn(0));
             assert_eq!(true, letter.ab());
         }
 
@@ -636,18 +620,13 @@ mod tests_of_units {
     }
 
     mod english_letters {
-        use crate::english_letters::{ab as ab_fn, ALPHABET_LEN, BASE_ALPHABET_LEN};
+
+        use crate::english_letters::{ALPHABET_LEN, BASE_ALPHABET_LEN};
 
         #[test]
         fn consts() {
             assert_eq!(26, BASE_ALPHABET_LEN);
             assert_eq!(52, ALPHABET_LEN);
-        }
-
-        #[test]
-        fn ab() {
-            let ab = ab_fn();
-            assert_eq!(ALPHABET_LEN, ab.len());
         }
 
         mod ix {
@@ -786,14 +765,14 @@ mod tests_of_units {
     }
 
     mod toc {
-        use crate::{Toc, Letter};
-        use crate::english_letters::{ix, ab};
+        use crate::{Toc, ab};
+        use crate::english_letters::{ix, ALPHABET_LEN};
 
         #[test]
         fn new() {
             let toc = Toc::new();
-            assert_eq!(ab(), toc.rt);
-            assert_eq!(ab as usize, toc.ab as usize);
+            assert_eq!(ab(ALPHABET_LEN), toc.rt);
+            assert_eq!(ALPHABET_LEN, toc.al);
             assert_eq!(ix as usize, toc.ix as usize);
         }
 
@@ -802,16 +781,12 @@ mod tests_of_units {
             fn test_ix(_c: char) -> usize {
                 0
             }
-            fn test_ab() -> Box<[Letter]> {
-                let mut ab = Vec::new();
-                ab.push(Letter::new());
-                ab.into_boxed_slice()
-            }
 
-            let toc = Toc::new_with(test_ix, test_ab);
+            let ab_len = 10;
+            let toc = Toc::new_with(test_ix, ab_len);
 
-            assert_eq!(test_ab(), toc.rt);
-            assert_eq!(test_ab as usize, toc.ab as usize);
+            assert_eq!(ab(ab_len), toc.rt);
+            assert_eq!(ab_len, toc.al);
             assert_eq!(test_ix as usize, toc.ix as usize);
             assert_eq!(0, toc.tr.capacity());
         }
@@ -1125,11 +1100,35 @@ mod tests_of_units {
 
                 _ = toc.track(entry(), true, false);
 
-                assert_eq!(1, Toc::rem_actual(&mut toc.tr));
+                assert_eq!(1, Toc::rem_actual(&mut toc));
 
                 #[allow(non_snake_case)]
                 let K = &toc.rt[ix('A')];
                 assert_eq!(false, K.ab());
+            }
+
+            #[test]
+            fn ab_len_test() {
+                let ix = |c| match c {
+                    | 'a' => 0,
+                    | 'z' => 99,
+                    | _ => panic!(),
+                };
+
+                let key_1 = || "aaa".chars();
+                let key_2 = || "aaz".chars();
+
+                let key_1_val = 50;
+                let key_2_val = 60;
+
+                let mut toc = Toc::new_with(ix, 100);
+                _ = toc.ins(key_1(), Some(key_1_val));
+                _ = toc.ins(key_2(), Some(key_2_val));
+
+                _ = toc.track(key_1(), true, false);
+
+                assert_eq!(key_1_val, Toc::rem_actual(&mut toc));
+                assert!(toc.acq(key_2()).is_ok());
             }
 
             #[test]
@@ -1144,7 +1143,7 @@ mod tests_of_units {
 
                 _ = toc.track(inner(), true, false);
 
-                assert_eq!(1, Toc::rem_actual(&mut toc.tr));
+                assert_eq!(1, Toc::rem_actual(&mut toc));
                 assert_eq!(VerRes::Unknown, toc.acq(inner()));
                 assert_eq!(VerRes::Ok(1), toc.acq(outer()));
             }
@@ -1161,7 +1160,7 @@ mod tests_of_units {
 
                 _ = toc.track(test(), true, false);
 
-                assert_eq!(1, Toc::rem_actual(&mut toc.tr));
+                assert_eq!(1, Toc::rem_actual(&mut toc));
                 assert_eq!(VerRes::Unknown, toc.acq(test()));
                 assert_eq!(VerRes::Ok(1), toc.acq(peer()));
             }
@@ -1178,7 +1177,7 @@ mod tests_of_units {
 
                 _ = toc.track(test(), true, false);
 
-                assert_eq!(1, Toc::rem_actual(&mut toc.tr));
+                assert_eq!(1, Toc::rem_actual(&mut toc));
                 assert_eq!(VerRes::Unknown, toc.acq(test()));
                 assert_eq!(VerRes::Ok(1), toc.acq(peer()));
             }
@@ -1195,7 +1194,7 @@ mod tests_of_units {
 
                 _ = toc.track(under(), true, false);
 
-                assert_eq!(1, Toc::rem_actual(&mut toc.tr));
+                assert_eq!(1, Toc::rem_actual(&mut toc));
                 assert_eq!(VerRes::Unknown, toc.acq(under()));
                 assert_eq!(VerRes::Ok(1), toc.acq(above()));
 
