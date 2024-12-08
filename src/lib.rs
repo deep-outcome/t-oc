@@ -49,19 +49,17 @@ fn ab(len: usize) -> Alphabet {
     #[cfg(feature = "test-ext")]
     let mut c = 'A' as u8;
 
-    for sc in ab.spare_capacity_mut()[..len].iter_mut() {
-        let mut _letter = sc.write(Letter::new());
+    let sc = ab.spare_capacity_mut();
+    for ix in 0..len {
+        let mut _letter = sc[ix].write(Letter::new());
 
         #[cfg(test)]
         #[cfg(feature = "test-ext")]
         {
             _letter.val = c as char;
 
-            if c == 'Z' as u8 {
-                c = 'a' as u8;
-            } else {
-                c = c + 1;
-            }
+            const Z: u8 = 'Z' as u8;
+            c = if c == Z { 'a' as u8 } else { c + 1 }
         }
     }
 
