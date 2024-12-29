@@ -40,6 +40,11 @@ type Alphabet = Box<[Letter]>;
 /// For details see `english_letters::ix` implementation.
 pub type Ix = fn(char) -> usize;
 
+/// Reversal index conversion function. Symmetrically mirrors `Ix` function.
+///
+/// For details see `english_letters::re` implementation.
+pub type Re = fn(usize) -> char;
+
 /// Alphabet function, tree arms generation of length specified.
 fn ab(len: usize) -> Alphabet {
     let mut ab = Vec::new();
@@ -78,21 +83,34 @@ pub mod english_letters {
     /// 52
     pub const ALPHABET_LEN: usize = BASE_ALPHABET_LEN * 2;
 
+    const A: usize = 'A' as usize;
+    #[allow(non_upper_case_globals)]
+    const a: usize = 'a' as usize;
+
     /// Index conversion function.
     pub fn ix(c: char) -> usize {
         let code_point = c as usize;
-
-        const A: usize = 'A' as usize;
-        #[allow(non_upper_case_globals)]
-        const a: usize = 'a' as usize;
 
         match code_point {
             | c if c > 64 && c < 91 => c - A,
             | c if c > 96 && c < 123 => c - a + BASE_ALPHABET_LEN,
             | _ => {
-                panic!("Index conversion failed because code point {code_point} is unsupported.")
+                panic!("Index conversion failed because code point `{code_point}` is unsupported.")
             },
         }
+    }
+
+    /// Index reversal conversion function.
+    pub fn re(i: usize) -> char {
+        let code_point = match i {
+            | i if i < 26 => i + A,
+            | i if i > 25 && i < 52 => i + a - BASE_ALPHABET_LEN,
+            | _ => {
+                panic!("Char conversion failed because index `{i}` conversion is not supported.")
+            },
+        };
+
+        code_point as u8 as char
     }
 }
 
@@ -252,6 +270,8 @@ pub struct Toc {
     rt: Alphabet,
     // index fn
     ix: Ix,
+    // rev index fn
+    re: Option<Re>,
     // alphabet len
     al: usize,
     // backtrace buff
@@ -260,9 +280,13 @@ pub struct Toc {
 
 impl Toc {
     /// Constructs default version of `Toc`, i.e. via
-    /// `fn new_with()` with `english_letters::ALPHABET_LEN` and `english_letters::ix`.
+    /// `fn new_with()` with `english_letters::{ix, re, ALPHABET_LEN}`.
     pub fn new() -> Self {
-        Self::new_with(english_letters::ix, english_letters::ALPHABET_LEN)
+        Self::new_with(
+            english_letters::ix,
+            Some(english_letters::re),
+            english_letters::ALPHABET_LEN,
+        )
     }
 
     /// Allows to use custom alphabet different from default alphabet.
@@ -278,9 +302,18 @@ impl Toc {
     ///     }
     /// }
     ///
+    /// // if `fn Toc::ext` will not be used, pass `None` for `re`
+    /// fn re(i: usize) -> char {
+    ///     match i {
+    ///         0 => '&',
+    ///         1 => '|',
+    ///         _ => panic!(),
+    ///     }
+    /// }    
+    ///
     /// let ab_len = 2;
     ///
-    /// let mut toc = Toc::new_with(ix, ab_len);
+    /// let mut toc = Toc::new_with(ix, Some(re), ab_len);
     /// let a = "&";
     /// let b = "|";
     /// let aba = "&|&";
@@ -290,10 +323,11 @@ impl Toc {
     /// _ = toc.ins(aba.chars(), None);
     /// assert_eq!(2, toc.acq(a.chars()).uproot());
     /// assert_eq!(1, toc.acq(aba.chars()).uproot());
-    pub fn new_with(ix: Ix, ab_len: usize) -> Self {
+    pub fn new_with(ix: Ix, re: Option<Re>, ab_len: usize) -> Self {
         Self {
             rt: ab(ab_len),
             ix,
+            re,
             al: ab_len,
             tr: Vec::new(),
         }
@@ -649,8 +683,9 @@ mod tests_of_units {
 
                     let err = unsafe { result.unwrap_err_unchecked() };
                     let downcast = err.downcast_ref::<String>().unwrap();
-                    let proof =
-                        format!("Index conversion failed because code point {cp} is unsupported.");
+                    let proof = format!(
+                        "Index conversion failed because code point `{cp}` is unsupported."
+                    );
                     assert_eq!(&proof, downcast);
                 }
             }
@@ -662,6 +697,26 @@ mod tests_of_units {
                     'a' as u8 -1, 'z' as u8 +1, // 97–122
                 ];
                 ucs
+            }
+        }
+
+        mod re {
+            use crate::english_letters::re;
+
+            #[test]
+            fn ixes() {
+                assert_eq!('A', re(0));
+                assert_eq!('Z', re(25));
+                assert_eq!('a', re(26));
+                assert_eq!('z', re(51));
+            }
+
+            #[test]
+            #[should_panic(
+                expected = "Char conversion failed because index `52` conversion is not supported."
+            )]
+            fn unsupported_ix() {
+                _ = re(52)
             }
         }
     }
@@ -764,14 +819,14 @@ mod tests_of_units {
 
     mod toc {
         use crate::{Toc, ab};
-        use crate::english_letters::{ix, ALPHABET_LEN};
+        use crate::english_letters::{ix, re, ALPHABET_LEN};
 
         #[test]
         fn new() {
             let toc = Toc::new();
-            assert_eq!(ab(ALPHABET_LEN), toc.rt);
             assert_eq!(ALPHABET_LEN, toc.al);
             assert_eq!(ix as usize, toc.ix as usize);
+            assert_eq!(re as usize, toc.re.unwrap() as usize);
         }
 
         #[test]
@@ -780,12 +835,17 @@ mod tests_of_units {
                 0
             }
 
+            fn test_re(_i: usize) -> char {
+                '\0'
+            }
+
             let ab_len = 10;
-            let toc = Toc::new_with(test_ix, ab_len);
+            let toc = Toc::new_with(test_ix, Some(test_re), ab_len);
 
             assert_eq!(ab(ab_len), toc.rt);
             assert_eq!(ab_len, toc.al);
             assert_eq!(test_ix as usize, toc.ix as usize);
+            assert_eq!(test_re as usize, toc.re.unwrap() as usize);
             assert_eq!(0, toc.tr.capacity());
         }
 
@@ -1119,7 +1179,7 @@ mod tests_of_units {
                 let key_1_val = 50;
                 let key_2_val = 60;
 
-                let mut toc = Toc::new_with(ix, 100);
+                let mut toc = Toc::new_with(ix, None, 100);
                 _ = toc.ins(key_1(), Some(key_1_val));
                 _ = toc.ins(key_2(), Some(key_2_val));
 

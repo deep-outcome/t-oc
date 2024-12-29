@@ -70,7 +70,7 @@ fn ix(c: char) -> usize {
 fn test() {
     let nums = [0, 2, 2, 100, 100, 9999];
 
-    let mut toc = Toc::new_with(ix, 10);
+    let mut toc = Toc::new_with(ix, None, 10);
 
     for n in nums {
         _ = toc.ins(UsizeCharIterator::new(n), None);
