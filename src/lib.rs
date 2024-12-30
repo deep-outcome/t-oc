@@ -240,6 +240,28 @@ impl<'a> TraRes<'a> {
     }
 }
 
+// TC: Ω(n ⋅ alphabet size) ⇒ Ω(n), n = nodes count
+// to lower estimation add unpredictible count of string clonings
+// and buffer (capacity-) reallocations
+fn ext(ab: &Alphabet, buff: &mut String, re: Re, o: &mut Vec<(String, usize)>) {
+    for ix in 0..ab.len() {
+        buff.push(re(ix));
+
+        let letter = &ab[ix];
+
+        if let Some(ct) = letter.ct {
+            let key = buff.clone();
+            o.push((key, ct));
+        }
+
+        if let Some(ab) = letter.ab.as_ref() {
+            ext(ab, buff, re, o);
+        }
+
+        _ = buff.pop();
+    }
+}
+
 /// Trie Occurrence Counter is frequency dictionary that uses any `impl Iterator<Item = char>` type as occurrent.
 ///
 /// OOB English letters A–Za–z support only.
@@ -797,6 +819,132 @@ mod tests_of_units {
             const VAL: usize = 77;
             let test = unsafe { VerRes::Ok(VAL).uproot_unchecked() };
             assert_eq!(VAL, test);
+        }
+    }
+
+    mod ext {
+
+        type Nest = (char, usize);
+
+        use crate::{ab as ab_ctor, ext, Alphabet};
+        use crate::english_letters::{ALPHABET_LEN, ix, re};
+
+        fn ab_fn() -> Alphabet {
+            ab_ctor(ALPHABET_LEN)
+        }
+
+        #[test]
+        fn basic_test() {
+            let mut ab = ab_fn();
+
+            ab[ix('A')].ct = Some(1);
+            ab[ix('z')].ct = Some(2);
+
+            let mut buff = String::new();
+            let mut test = Vec::new();
+
+            ext(&ab, &mut buff, re, &mut test);
+
+            let proof = vec![(String::from("A"), 1), (String::from("z"), 2)];
+            assert_eq!(proof, test);
+        }
+
+        #[test]
+        fn nesting() {
+            let mut root = ab_fn();
+
+            let nesting = [
+                (('A', 3), ('z', 5)),
+                (('B', 5), ('y', 8)),
+                (('y', 10), ('B', 12)),
+                (('z', 99), ('A', 103)),
+            ];
+
+            for n in nesting {
+                prep(&mut root, n);
+            }
+
+            let mut buff = String::new();
+            let mut test = Vec::new();
+
+            ext(&root, &mut buff, re, &mut test);
+
+            let proof = vec![
+                (String::from("A"), 3),
+                (String::from("Az"), 5),
+                (String::from("B"), 5),
+                (String::from("By"), 8),
+                (String::from("y"), 10),
+                (String::from("yB"), 12),
+                (String::from("z"), 99),
+                (String::from("zA"), 103),
+            ];
+
+            assert_eq!(proof, test);
+
+            fn prep(ab: &mut Alphabet, n: (Nest, Nest)) {
+                let ultra = n.0;
+                let infra = n.1;
+
+                let u_l = &mut ab[ix(ultra.0)];
+                let mut ul_ab = ab_fn();
+
+                let i_l = &mut ul_ab[ix(infra.0)];
+                i_l.ct = Some(infra.1);
+
+                u_l.ab = Some(ul_ab);
+                u_l.ct = Some(ultra.1);
+            }
+        }
+
+        #[test]
+        fn in_depth_recursion() {
+            let mut root = ab_fn();
+
+            let paths = [
+                ("AA", 13),
+                ("AzBq", 11),
+                ("By", 329),
+                ("ZaZazAzAzAbYyb", 55),
+                ("yBC", 7),
+                ("ybXr", 53),
+                ("ybXrQUTmop", 33),
+                ("ybXrQUTmopFVB", 99),
+                ("ybXrQUTmopRFG", 80),
+                ("zAzAZaZaZaByYB", 44),
+            ];
+
+            for p in paths {
+                let mut chars = p.0.chars();
+                let mut le = &mut root[ix(chars.next().unwrap())];
+
+                while let Some(c) = chars.next() {
+                    let ab = le.ab.get_or_insert_with(|| ab_fn());
+                    le = &mut ab[ix(c)];
+                }
+
+                le.ct = Some(p.1)
+            }
+
+            let mut buff = String::new();
+            let mut test = Vec::new();
+
+            ext(&root, &mut buff, re, &mut test);
+
+            let proof = vec![
+                (String::from("AA"), 13),
+                (String::from("AzBq"), 11),
+                (String::from("By"), 329),
+                (String::from("ZaZazAzAzAbYyb"), 55),
+                (String::from("yBC"), 7),
+                (String::from("ybXr"), 53),
+                (String::from("ybXrQUTmop"), 33),
+                (String::from("ybXrQUTmopFVB"), 99),
+                (String::from("ybXrQUTmopRFG"), 80),
+                (String::from("zAzAZaZaZaByYB"), 44),
+            ];
+
+            assert_eq!(proof, test);
         }
     }
 
