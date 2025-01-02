@@ -1,9 +1,9 @@
 [package]
 name = "t-oc"
-version = "5.0.3"
+version = "6.0.0"
 authors= [ "software9119.technology" ]
 edition = "2021"
-description = "Trie Occurrence Counter is frequency dictionary for any type implementing `Iterator<Item = char>`."
+description = "Trie Occurrence Counter is frequency dictionary for any type implementing Iterator<Item = char>."
 readme = "./README.md"
 repository = "https://github.com/deep-outcome/t-oc"
 license = "MIT"
