@@ -606,6 +606,11 @@ impl Toc {
             panic!("This method is unsupported when `new_with` `re` parameter is provided with `None`.");
         }
     }
+
+    /// Used to clear tree.
+    pub fn clr(&mut self) {
+        self.rt = ab(self.al);
+    }
 }
 
 #[cfg(test)]
@@ -1539,7 +1544,7 @@ mod tests_of_units {
         }
 
         mod ext {
-            use crate::Toc;
+            use crate::{Toc, VerRes};
             use crate::english_letters::ix;
 
             #[test]
@@ -1565,6 +1570,10 @@ mod tests_of_units {
                 let ext = toc.ext();
                 assert_eq!(test, ext);
                 assert!(ext.capacity() < 1000);
+
+                for t in test.iter() {
+                    assert_eq!(VerRes::Ok(t.1), toc.acq(t.0.chars()));
+                }
             }
 
             #[test]
@@ -1574,6 +1583,20 @@ mod tests_of_units {
             fn re_not_provided() {
                 _ = Toc::new_with(ix, None, 0).ext()
             }
+        }
+
+        use crate::VerRes;
+
+        #[test]
+        fn clr() {
+            let key = || "abc".chars();
+
+            let mut toc = Toc::new();
+            _ = toc.add(key(), None);
+            toc.clr();
+
+            assert_eq!(VerRes::Unknown, toc.acq(key()));
+            assert_eq!(ab(ALPHABET_LEN), toc.rt);
         }
     }
 }
