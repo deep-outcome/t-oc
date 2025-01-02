@@ -114,28 +114,28 @@ pub mod english_letters {
     }
 }
 
-///  Insertion result enumeration.
+///  Addition result enumeration.
 #[derive(Debug)]
 #[derive(PartialEq, Eq)]
-pub enum InsRes {
-    /// Insertion accomplished. Optionally carries previous value, based on its existence.
+pub enum AddRes {
+    /// Addition accomplished. Optionally carries previous value, based on its existence.
     Ok(Option<usize>),
-    /// Attempt to insert zero occurrent.
+    /// Attempt to add zero occurrent.
     ZeroLen,
 }
 
-impl InsRes {
-    /// Returns `true` only for `InsRes::Ok(_)`.
+impl AddRes {
+    /// Returns `true` only for `AddRes::Ok(_)`.
     pub const fn is_ok(&self) -> bool {
         match self {
-            | InsRes::Ok(_) => true,
+            | AddRes::Ok(_) => true,
             | _ => false,
         }
     }
 
-    /// Returns `true` only for `InsRes::Ok(Some(_))`.
+    /// Returns `true` only for `AddRes::Ok(Some(_))`.
     pub const fn is_ok_some(&self) -> bool {
-        if let InsRes::Ok(opt) = self {
+        if let AddRes::Ok(opt) = self {
             if let Some(_) = opt {
                 return true;
             }
@@ -144,26 +144,26 @@ impl InsRes {
         false
     }
 
-    /// Returns `usize` of `InsRes::Ok(Some(usize))` or _panics_ if:
+    /// Returns `usize` of `AddRes::Ok(Some(usize))` or _panics_ if:
     /// - not that variant
     /// - `Option<usize>` is `None`
     pub const fn uproot_ok_some(&self) -> usize {
-        if let InsRes::Ok(opt) = self {
+        if let AddRes::Ok(opt) = self {
             if let Some(n) = opt {
                 return *n;
             }
         }
 
-        panic!("Not InsRes::Ok(Some(_)) variant.")
+        panic!("Not AddRes::Ok(Some(_)) variant.")
     }
 
-    /// Returns `usize` of `InsRes::Ok(Some(usize))` and does not _panic_ (UB) if:
+    /// Returns `usize` of `AddRes::Ok(Some(usize))` and does not _panic_ (UB) if:
     /// - not that variant
     /// - `Option<usize>` is `None`
     ///
     /// Check with `std::hint::unreachable_unchecked` for more information.
     pub const unsafe fn uproot_ok_some_unchecked(&self) -> usize {
-        if let InsRes::Ok(opt) = self {
+        if let AddRes::Ok(opt) = self {
             if let Some(n) = opt {
                 return *n;
             }
@@ -273,14 +273,14 @@ fn ext(ab: &Alphabet, buff: &mut String, re: Re, o: &mut Vec<(String, usize)>) {
 /// let mut toc = Toc::new();
 /// let occurrent = "true";
 ///
-/// _ = toc.ins(occurrent.chars(), None);
-/// _ = toc.ins(true.to_string().chars(), None);
+/// _ = toc.add(occurrent.chars(), None);
+/// _ = toc.add(true.to_string().chars(), None);
 ///
 /// assert_eq!(2, toc.acq(occurrent.chars()).uproot());
 /// toc.put(occurrent.chars(), 15);
 /// assert_eq!(15, toc.acq(occurrent.chars()).uproot());
 ///
-/// let catch = catch_unwind(move|| _ = toc.ins("#&%".chars(), None));
+/// let catch = catch_unwind(move|| _ = toc.add("#&%".chars(), None));
 /// assert!(catch.is_err());
 /// ```
 ///
@@ -339,10 +339,10 @@ impl Toc {
     /// let a = "&";
     /// let b = "|";
     /// let aba = "&|&";
-    /// _ = toc.ins(a.chars(), None);
-    /// _ = toc.ins(a.chars(), None);
-    /// _ = toc.ins(b.chars(), None);
-    /// _ = toc.ins(aba.chars(), None);
+    /// _ = toc.add(a.chars(), None);
+    /// _ = toc.add(a.chars(), None);
+    /// _ = toc.add(b.chars(), None);
+    /// _ = toc.add(aba.chars(), None);
     /// assert_eq!(2, toc.acq(a.chars()).uproot());
     /// assert_eq!(1, toc.acq(aba.chars()).uproot());
     pub fn new_with(ix: Ix, re: Option<Re>, ab_len: usize) -> Self {
@@ -355,6 +355,8 @@ impl Toc {
         }
     }
 
+    /// Used to set internal backtracing buffer capacity.
+    ///
     /// `Toc` uses internal buffer, to avoid excessive allocations and copying, which grows
     /// over time due backtracing in `rem` method which backtraces whole path from entry
     /// node to root node.
@@ -394,25 +396,27 @@ impl Toc {
         tr.capacity()
     }
 
-    /// Return value is internal backtracing buffer capacity.
+    /// Used to obtain internal backtracing buffer capacity.
     ///
     /// Check with `fn put_trace_cap` for details.
     pub fn acq_trace_cap(&self) -> usize {
         self.tr.capacity()
     }
 
+    /// Used to add occurence to tree.
+    ///
     /// Counter is of word size. Add overflow is wrapped using `wrapping_add`.
     ///
     /// Optional `val` parameter can be used to insert exact value.
     ///
-    /// Return value is `InsRes::Ok(Option<usize>)` for non-zero `occurrent` and holds previous value, if there was some.
+    /// Return value is `AddRes::Ok(Option<usize>)` for non-zero `occurrent` and holds previous value, if there was some.
     ///
     /// - SC: Θ(q) where q is number of unique nodes, i.e. `char`s in respective branches.
-    pub fn ins(&mut self, mut occurrent: impl Iterator<Item = char>, val: Option<usize>) -> InsRes {
+    pub fn add(&mut self, mut occurrent: impl Iterator<Item = char>, val: Option<usize>) -> AddRes {
         let c = occurrent.next();
 
         if c.is_none() {
-            return InsRes::ZeroLen;
+            return AddRes::ZeroLen;
         }
 
         let c = unsafe { c.unwrap_unchecked() };
@@ -438,7 +442,7 @@ impl Toc {
             }
         });
 
-        InsRes::Ok(ct)
+        AddRes::Ok(ct)
     }
 
     /// Used to acquire value for `occurrent`.
@@ -581,6 +585,25 @@ impl Toc {
             }
         } else {
             TraRes::UnknownForNotEntry
+        }
+    }
+
+    /// Used to extract occurences from tree.
+    ///
+    /// Does not clear tree. Check with `fn clr` for this.
+    pub fn ext(&self) -> Vec<(String, usize)> {
+        if let Some(re) = self.re {
+            // capacity is prebuffered to 1000
+            let mut buff = String::with_capacity(1000);
+
+            // capacity is prebuffered to 1000
+            let mut res = Vec::with_capacity(1000);
+
+            ext(&self.rt, &mut buff, re, &mut res);
+            res.shrink_to_fit();
+            res
+        } else {
+            panic!("This method is unsupported when `new_with` `re` parameter is provided with `None`.");
         }
     }
 }
@@ -743,52 +766,52 @@ mod tests_of_units {
         }
     }
 
-    mod ins_res {
-        use crate::InsRes;
+    mod add_res {
+        use crate::AddRes;
 
         #[test]
         fn is_ok() {
-            assert_eq!(true, InsRes::Ok(None).is_ok());
-            assert_eq!(false, InsRes::ZeroLen.is_ok());
+            assert_eq!(true, AddRes::Ok(None).is_ok());
+            assert_eq!(false, AddRes::ZeroLen.is_ok());
         }
 
         #[test]
         fn is_ok_some_some() {
-            assert_eq!(true, InsRes::Ok(Some(3)).is_ok_some());
+            assert_eq!(true, AddRes::Ok(Some(3)).is_ok_some());
         }
 
         #[test]
         fn is_ok_some_none() {
-            assert_eq!(false, InsRes::Ok(None).is_ok_some());
+            assert_eq!(false, AddRes::Ok(None).is_ok_some());
         }
 
         #[test]
         fn is_ok_some_not_ok() {
-            assert_eq!(false, InsRes::ZeroLen.is_ok_some());
+            assert_eq!(false, AddRes::ZeroLen.is_ok_some());
         }
 
         #[test]
         fn uproot_ok_some_some() {
             let val = 3;
-            assert_eq!(val, InsRes::Ok(Some(val)).uproot_ok_some());
+            assert_eq!(val, AddRes::Ok(Some(val)).uproot_ok_some());
         }
 
         #[test]
-        #[should_panic(expected = "Not InsRes::Ok(Some(_)) variant.")]
+        #[should_panic(expected = "Not AddRes::Ok(Some(_)) variant.")]
         fn uproot_ok_some_none() {
-            _ = InsRes::Ok(None).uproot_ok_some()
+            _ = AddRes::Ok(None).uproot_ok_some()
         }
 
         #[test]
-        #[should_panic(expected = "Not InsRes::Ok(Some(_)) variant.")]
+        #[should_panic(expected = "Not AddRes::Ok(Some(_)) variant.")]
         fn uproot_ok_some_not_ok() {
-            _ = InsRes::ZeroLen.uproot_ok_some()
+            _ = AddRes::ZeroLen.uproot_ok_some()
         }
 
         #[test]
         fn uproot_ok_some_unchecked() {
             let val = 3;
-            let uproot = unsafe { InsRes::Ok(Some(val)).uproot_ok_some_unchecked() };
+            let uproot = unsafe { AddRes::Ok(Some(val)).uproot_ok_some_unchecked() };
             assert_eq!(val, uproot);
         }
     }
@@ -1049,8 +1072,8 @@ mod tests_of_units {
             assert_eq!(VAL, toc.acq_trace_cap());
         }
 
-        mod ins {
-            use crate::{Toc, InsRes};
+        mod add {
+            use crate::{Toc, AddRes};
             use crate::english_letters::ix;
 
             #[test]
@@ -1058,7 +1081,7 @@ mod tests_of_units {
                 let entry = || "impreciseness".chars();
 
                 let mut toc = Toc::new();
-                assert_eq!(InsRes::Ok(None), toc.ins(entry(), None));
+                assert_eq!(AddRes::Ok(None), toc.add(entry(), None));
 
                 let chars: Vec<char> = entry().collect();
                 let len = chars.len();
@@ -1088,23 +1111,23 @@ mod tests_of_units {
             #[test]
             fn zero_occurrent() {
                 let mut toc = Toc::new();
-                assert_eq!(InsRes::ZeroLen, toc.ins("".chars(), None));
+                assert_eq!(AddRes::ZeroLen, toc.add("".chars(), None));
             }
 
             #[test]
             fn singular_occurrent() {
                 let mut toc = Toc::new();
-                assert_eq!(InsRes::Ok(None), toc.ins("a".chars(), None));
+                assert_eq!(AddRes::Ok(None), toc.add("a".chars(), None));
                 assert_eq!(Some(1), toc.rt[ix('a')].ct);
             }
 
             #[test]
-            fn double_insert() {
+            fn double_add() {
                 let entry = || "impreciseness".chars();
 
                 let mut toc = Toc::new();
-                assert_eq!(InsRes::Ok(None), toc.ins(entry(), None));
-                assert_eq!(InsRes::Ok(Some(1)), toc.ins(entry(), None));
+                assert_eq!(AddRes::Ok(None), toc.add(entry(), None));
+                assert_eq!(AddRes::Ok(Some(1)), toc.add(entry(), None));
 
                 let chars: Vec<char> = entry().collect();
                 let len = chars.len();
@@ -1137,7 +1160,7 @@ mod tests_of_units {
                 const VAL: usize = 15;
 
                 let mut toc = Toc::new();
-                assert_eq!(InsRes::Ok(None), toc.ins(entry(), Some(VAL)));
+                assert_eq!(AddRes::Ok(None), toc.add(entry(), Some(VAL)));
                 assert_eq!(VerRes::Ok(VAL), toc.acq(entry()));
             }
 
@@ -1147,9 +1170,9 @@ mod tests_of_units {
                 const VAL: usize = 15;
 
                 let mut toc = Toc::new();
-                _ = toc.ins(entry(), None);
+                _ = toc.add(entry(), None);
 
-                assert_eq!(InsRes::Ok(Some(1)), toc.ins(entry(), Some(VAL)));
+                assert_eq!(AddRes::Ok(Some(1)), toc.add(entry(), Some(VAL)));
                 assert_eq!(VerRes::Ok(VAL), toc.acq(entry()));
             }
 
@@ -1184,13 +1207,13 @@ mod tests_of_units {
                 let mut toc = Toc::new();
                 for (s, c) in strs {
                     for i in 0..c {
-                        let res = toc.ins(s.chars(), None);
+                        let res = toc.add(s.chars(), None);
                         let prev = if i > 0 {
                             Some(i)
                         } else {
                             None
                         };        
-                        assert_eq!(InsRes::Ok(prev), res);
+                        assert_eq!(AddRes::Ok(prev), res);
                     }
                 }
 
@@ -1206,9 +1229,9 @@ mod tests_of_units {
 
                 let entry = || "a".chars();
 
-                _ = toc.ins(entry(), None);
+                _ = toc.add(entry(), None);
                 _ = toc.put(entry(), usize::MAX);
-                _ = toc.ins(entry(), None);
+                _ = toc.add(entry(), None);
                 assert_eq!(VerRes::Ok(0), toc.acq(entry()));
             }
         }
@@ -1223,7 +1246,7 @@ mod tests_of_units {
                 let b = || "b".chars();
 
                 let mut toc = Toc::new();
-                _ = toc.ins(a(), None);
+                _ = toc.add(a(), None);
 
                 assert_eq!(VerRes::Ok(1), toc.acq(a()));
                 assert_eq!(VerRes::Unknown, toc.acq(b()));
@@ -1254,7 +1277,7 @@ mod tests_of_units {
                 let b = || "b".chars();
 
                 let mut toc = Toc::new();
-                _ = toc.ins(a(), None);
+                _ = toc.add(a(), None);
 
                 assert_eq!(VerRes::Ok(1), toc.put(a(), 3));
                 assert_eq!(VerRes::Ok(3), toc.acq(a()));
@@ -1277,7 +1300,7 @@ mod tests_of_units {
                 let unknown = || "NeglectfulAndFeeble".chars();
 
                 let mut toc = Toc::new();
-                _ = toc.ins(known(), None);
+                _ = toc.add(known(), None);
 
                 assert_eq!(VerRes::Ok(1), toc.rem(known()));
                 assert_eq!(VerRes::Unknown, toc.acq(known()));
@@ -1302,7 +1325,7 @@ mod tests_of_units {
             fn basic_test() {
                 let entry = || "ABCxyz".chars();
                 let mut toc = Toc::new();
-                _ = toc.ins(entry(), None);
+                _ = toc.add(entry(), None);
 
                 _ = toc.track(entry(), true, false);
 
@@ -1328,8 +1351,8 @@ mod tests_of_units {
                 let key_2_val = 60;
 
                 let mut toc = Toc::new_with(ix, None, 100);
-                _ = toc.ins(key_1(), Some(key_1_val));
-                _ = toc.ins(key_2(), Some(key_2_val));
+                _ = toc.add(key_1(), Some(key_1_val));
+                _ = toc.add(key_2(), Some(key_2_val));
 
                 _ = toc.track(key_1(), true, false);
 
@@ -1342,10 +1365,10 @@ mod tests_of_units {
                 let mut toc = Toc::new();
 
                 let outer = || "Keyword".chars();
-                _ = toc.ins(outer(), None);
+                _ = toc.add(outer(), None);
 
                 let inner = || "Key".chars();
-                _ = toc.ins(inner(), None);
+                _ = toc.add(inner(), None);
 
                 _ = toc.track(inner(), true, false);
 
@@ -1359,10 +1382,10 @@ mod tests_of_units {
                 let mut toc = Toc::new();
 
                 let peer = || "Keyworder".chars();
-                _ = toc.ins(peer(), None);
+                _ = toc.add(peer(), None);
 
                 let test = || "Keywordee".chars();
-                _ = toc.ins(test(), None);
+                _ = toc.add(test(), None);
 
                 _ = toc.track(test(), true, false);
 
@@ -1376,10 +1399,10 @@ mod tests_of_units {
                 let mut toc = Toc::new();
 
                 let peer = || "Keyworders".chars();
-                _ = toc.ins(peer(), None);
+                _ = toc.add(peer(), None);
 
                 let test = || "Keywordee".chars();
-                _ = toc.ins(test(), None);
+                _ = toc.add(test(), None);
 
                 _ = toc.track(test(), true, false);
 
@@ -1393,10 +1416,10 @@ mod tests_of_units {
                 let mut toc = Toc::new();
 
                 let above = || "Keyworder".chars();
-                _ = toc.ins(above(), None);
+                _ = toc.add(above(), None);
 
                 let under = || "Keyworders".chars();
-                _ = toc.ins(under(), None);
+                _ = toc.add(under(), None);
 
                 _ = toc.track(under(), true, false);
 
@@ -1432,7 +1455,7 @@ mod tests_of_units {
 
                 let mut toc = Toc::new();
 
-                _ = toc.ins(entry(), None);
+                _ = toc.add(entry(), None);
                 let res = toc.track(entry(), true, false);
 
                 if let TraRes::Ok(l) = res {
@@ -1455,7 +1478,7 @@ mod tests_of_units {
                 let entry = || "DictionaryLexicon".chars();
 
                 let mut toc = Toc::new();
-                _ = toc.ins(entry(), None);
+                _ = toc.add(entry(), None);
                 _ = toc.track(entry(), true, false);
 
                 let proof = entry().collect::<Vec<char>>();
@@ -1477,7 +1500,7 @@ mod tests_of_units {
                 let last = 'k';
 
                 let mut toc = Toc::new();
-                _ = toc.ins(entry(), None);
+                _ = toc.add(entry(), None);
                 let res = toc.track(entry(), false, false);
 
                 match res {
@@ -1498,7 +1521,7 @@ mod tests_of_units {
                 let bad_key = || "Wordbooks".chars();
 
                 let mut toc = Toc::new();
-                _ = toc.ins(key(), None);
+                _ = toc.add(key(), None);
                 let res = toc.track(bad_key(), false, false);
                 assert_eq!(TraRes::UnknownForAbsentPath, res);
             }
@@ -1509,9 +1532,47 @@ mod tests_of_units {
                 let bad_key = || "Wordbook".chars();
 
                 let mut toc = Toc::new();
-                _ = toc.ins(key(), None);
+                _ = toc.add(key(), None);
                 let res = toc.track(bad_key(), false, false);
                 assert_eq!(TraRes::UnknownForNotEntry, res);
+            }
+        }
+
+        mod ext {
+            use crate::Toc;
+            use crate::english_letters::ix;
+
+            #[test]
+            fn basic_test() {
+                let test = vec![
+                    (String::from("AA"), 13),
+                    (String::from("AzBq"), 11),
+                    (String::from("By"), 329),
+                    (String::from("ZaZazAzAzAbYyb"), 55),
+                    (String::from("yBC"), 7),
+                    (String::from("ybXr"), 53),
+                    (String::from("ybXrQUTmop"), 33),
+                    (String::from("ybXrQUTmopFVB"), 99),
+                    (String::from("ybXrQUTmopRFG"), 80),
+                    (String::from("zAzAZaZaZaByYB"), 44),
+                ];
+
+                let mut toc = Toc::new();
+                for t in test.iter() {
+                    _ = toc.add(t.0.chars(), Some(t.1));
+                }
+
+                let ext = toc.ext();
+                assert_eq!(test, ext);
+                assert!(ext.capacity() < 1000);
+            }
+
+            #[test]
+            #[should_panic(
+                expected = "This method is unsupported when `new_with` `re` parameter is provided with `None`."
+            )]
+            fn re_not_provided() {
+                _ = Toc::new_with(ix, None, 0).ext()
             }
         }
     }

@@ -38,7 +38,7 @@ fn test() {
     let mut toc = Toc::new_with(ix, None, 10);
 
     for n in nums {
-        _ = toc.ins(UsizeCharIterator::new(n), None);
+        _ = toc.add(UsizeCharIterator::new(n), None);
     }
 
     assert_eq!(1, toc.acq(UsizeCharIterator::new(0)).uproot());

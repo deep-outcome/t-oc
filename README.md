@@ -15,14 +15,14 @@ use std::panic::catch_unwind;
 let mut toc = Toc::new();
 let occurrent = "true";
 
-_ = toc.ins(occurrent.chars(), None);
-_ = toc.ins(true.to_string().chars(), None);
+_ = toc.add(occurrent.chars(), None);
+_ = toc.add(true.to_string().chars(), None);
 
 assert_eq!(2, toc.acq(occurrent.chars()).uproot());
 toc.put(occurrent.chars(), 15);
 assert_eq!(15, toc.acq(occurrent.chars()).uproot());
 
-let catch = catch_unwind(move|| _ = toc.ins("#&%".chars(), None));
+let catch = catch_unwind(move|| _ = toc.add("#&%".chars(), None));
 assert!(catch.is_err());
 ```
 
@@ -73,7 +73,7 @@ fn test() {
     let mut toc = Toc::new_with(ix, None, 10);
 
     for n in nums {
-        _ = toc.ins(UsizeCharIterator::new(n), None);
+        _ = toc.add(UsizeCharIterator::new(n), None);
     }
 
     assert_eq!(1, toc.acq(UsizeCharIterator::new(0)).uproot());
