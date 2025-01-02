@@ -241,6 +241,7 @@ impl<'a> TraRes<'a> {
 }
 
 // TC: Ω(n ⋅ alphabet size) ⇒ Ω(n), n = nodes count
+// SC: Θ(s + n) ⇒ Θ(s), n = nodes count, s = key lengths sum
 // to lower estimation add unpredictible count of string clonings
 // and buffer (capacity-) reallocations
 fn ext(ab: &Alphabet, buff: &mut String, re: Re, o: &mut Vec<(String, usize)>) {
@@ -285,8 +286,8 @@ fn ext(ab: &Alphabet, buff: &mut String, re: Re, o: &mut Vec<(String, usize)>) {
 /// ```
 ///
 /// When asymptotic computational complexity is not explicitly specified , it is:
-/// - TC: Θ(s) where s is count of `char`s iterated over.
-/// - SC: Θ(0)
+/// - TC: Θ(c) where c is count of `char`s iterated over.
+/// - SC: Θ(0).
 pub struct Toc {
     // tree root
     rt: Alphabet,
@@ -486,9 +487,9 @@ impl Toc {
     ///
     /// If `VerRes::Ok(usize)`, `usize` is `occurrent` occurrences count.
     ///
-    /// - s is count of `char`s iterated over.
-    /// - TC: Ω(s) or ϴ(s) (backtracing buffer capacity dependent complexity)
-    /// - SC: ϴ(s)
+    /// - _c_ is count of `char`s iterated over.
+    /// - TC: Ω(c) or ϴ(c) (backtracing buffer capacity dependent complexity).
+    /// - SC: ϴ(c).
     ///
     /// Check with `put_trace_cap` for details on backtracing.
     pub fn rem(&mut self, occurrent: impl Iterator<Item = char>) -> VerRes {
@@ -539,7 +540,7 @@ impl Toc {
         unsafe { ct.unwrap_unchecked() }
     }
 
-    // - s is count of `char`s iterated over.
+    // - s is count of `char`s iterated over
     // - TC: Ω(s) when `tracing = true`, ϴ(s) otherwise
     // - SC: ϴ(s) when `tracing = true`, ϴ(0) otherwise
     fn track(
@@ -591,6 +592,9 @@ impl Toc {
     /// Used to extract occurences from tree.
     ///
     /// Does not clear tree. Check with `fn clr` for this.
+    ///
+    /// - TC: Ω(n) where n is node count.
+    /// - SC: Θ(s) where s is occurrent lengths summation.
     pub fn ext(&self) -> Vec<(String, usize)> {
         if let Some(re) = self.re {
             // capacity is prebuffered to 1000
