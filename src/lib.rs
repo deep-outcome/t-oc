@@ -589,11 +589,11 @@ impl Toc {
         }
     }
 
-    /// Used to extract occurences from tree.
+    /// Used to extract occurences from tree. 
     ///
-    /// Does not clear tree. Check with `fn clr` for this.
+    /// Extraction is alphabetically ordered. Does not clear tree. Use `fn clr` for clearing.
     ///
-    /// - TC: Ω(n) where n is node count.
+    /// - TC: Ω(n) where n is count of nodes in tree.
     /// - SC: Θ(s) where s is occurrent lengths summation.
     pub fn ext(&self) -> Vec<(String, usize)> {
         if let Some(re) = self.re {
@@ -612,6 +612,8 @@ impl Toc {
     }
 
     /// Used to clear tree.
+    ///
+    /// TC: Θ(n) where n is count of nodes in tree.
     pub fn clr(&mut self) {
         self.rt = ab(self.al);
     }
