@@ -243,7 +243,7 @@ impl<'a> TraRes<'a> {
 // TC: Ω(n ⋅ alphabet size) ⇒ Ω(n), n = nodes count
 // SC: Θ(s + n) ⇒ Θ(s), n = nodes count, s = key lengths sum
 // to lower estimation add unpredictible count of string clonings
-// and buffer (capacity-) reallocations
+// and buffers (capacity-) reallocations
 fn ext(ab: &Alphabet, buff: &mut String, re: Re, o: &mut Vec<(String, usize)>) {
     for ix in 0..ab.len() {
         buff.push(re(ix));
@@ -589,7 +589,7 @@ impl Toc {
         }
     }
 
-    /// Used to extract occurences from tree. 
+    /// Used to extract occurences from tree.
     ///
     /// Extraction is alphabetically ordered. Does not clear tree. Use `fn clr` for clearing.
     ///
