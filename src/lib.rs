@@ -4,6 +4,75 @@
 
 use std::vec::Vec;
 
+use uc::UC;
+mod uc {
+    use std::{cell::UnsafeCell, ops::Deref};
+
+    pub struct UC<T>(UnsafeCell<T>);
+
+    impl<T> UC<T> {
+        pub fn get_ref(&self) -> &T {
+            let t = self.0.get();
+            unsafe { t.as_mut().unwrap_unchecked() }
+        }
+
+        pub fn get_mut(&self) -> &mut T {
+            let t = self.0.get();
+            unsafe { t.as_mut().unwrap_unchecked() }
+        }
+
+        pub const fn new(t: T) -> Self {
+            Self(UnsafeCell::new(t))
+        }
+    }
+
+    impl<T> Deref for UC<T> {
+        type Target = T;
+
+        fn deref(&self) -> &T {
+            self.get_ref()
+        }
+    }
+
+    #[cfg(test)]
+    mod tests_of_units {
+        use std::ops::Deref;
+
+        use super::UC;
+
+        #[test]
+        fn get_ref() {
+            let zero = &0usize as *const usize;
+            let uc = UC::new(zero);
+            let test = uc.get_ref();
+
+            assert_eq!(zero as usize, *test as usize);
+        }
+
+        #[test]
+        fn get_mut() {
+            let zero = &0usize as *const usize;
+            let uc = UC::new(zero);
+            let test = uc.get_mut();
+
+            assert_eq!(zero as usize, *test as usize);
+        }
+
+        #[test]
+        fn new() {
+            let uc = UC::new(333);
+            let mut test = uc.0;
+            assert_eq!(333, *test.get_mut());
+        }
+
+        #[test]
+        fn deref() {
+            let uc = UC::new(11);
+            assert_eq!(uc.get_ref(), uc.deref());
+        }
+    }
+}
+
 /// `Letter` is `Alphabet` element, represents tree node.
 #[cfg_attr(test, derive(PartialEq))]
 struct Letter {
@@ -296,7 +365,7 @@ pub struct Toc {
     // alphabet len
     al: usize,
     // backtrace buff
-    tr: Vec<*mut Letter>,
+    tr: UC<Vec<*mut Letter>>,
     // occurrent count
     ct: usize,
 }
@@ -352,7 +421,7 @@ impl Toc {
             ix,
             re,
             al: ab_len,
-            tr: Vec::new(),
+            tr: UC::new(Vec::new()),
             ct: 0,
         }
     }
@@ -390,9 +459,9 @@ impl Toc {
         let cp = tr.capacity();
 
         if cp < approx_cap {
-            tr.reserve(approx_cap);
+            tr.get_mut().reserve(approx_cap);
         } else if cp > approx_cap {
-            *tr = Vec::with_capacity(approx_cap);
+            *tr = UC::new(Vec::with_capacity(approx_cap));
         }
 
         tr.capacity()
@@ -509,12 +578,12 @@ impl Toc {
             track_res.ver_res()
         };
 
-        self.tr.clear();
+        self.tr.get_mut().clear();
         res
     }
 
     fn rem_actual(&mut self) -> usize {
-        let mut trace = self.tr.iter_mut().map(|x| unsafe { x.as_mut() }.unwrap());
+        let mut trace = self.tr.iter().map(|x| unsafe { x.as_mut() }.unwrap());
         let entry = trace.next_back().unwrap();
 
         let ct = entry.ct.take();
@@ -566,7 +635,7 @@ impl Toc {
         let c = unsafe { c.unwrap_unchecked() };
 
         let ix = &self.ix;
-        let tr = &mut self.tr;
+        let tr = self.tr.get_mut();
 
         let mut letter = &mut self.rt[ix(c)];
 
@@ -1061,7 +1130,7 @@ mod tests_of_units {
         }
 
         mod put_trace_cap {
-            use crate::Toc;
+            use crate::{Toc, uc::UC};
 
             #[test]
             fn extend() {
@@ -1081,7 +1150,7 @@ mod tests_of_units {
                 const OLD_CAP: usize = 50;
 
                 let mut toc = Toc::new();
-                toc.tr = Vec::with_capacity(OLD_CAP);
+                toc.tr = UC::new(Vec::with_capacity(OLD_CAP));
 
                 let size = toc.put_trace_cap(NEW_CAP);
                 assert!(size >= NEW_CAP && size < OLD_CAP);
@@ -1108,7 +1177,7 @@ mod tests_of_units {
             let tr = &mut toc.tr;
 
             assert!(tr.capacity() < VAL);
-            tr.reserve_exact(VAL);
+            tr.get_mut().reserve_exact(VAL);
             assert_eq!(VAL, toc.acq_trace_cap());
         }
 
