@@ -99,6 +99,10 @@ impl Letter {
     const fn ct(&self) -> bool {
         self.ct.is_some()
     }
+
+    const fn to_mut_ptr(&self) -> *mut Self {
+        (self as *const Self).cast_mut()
+    }
 }
 
 /// Tree node arms. Consists of `Letter`s.
@@ -526,9 +530,7 @@ impl Toc {
     ///
     /// If `VerRes::Ok(usize)`, `usize` is `occurrent` occurrences count.
     pub fn acq(&self, occurrent: impl Iterator<Item = char>) -> VerRes {
-        let this = unsafe { self.as_mut() };
-
-        let track_res = this.track(occurrent, false, false);
+        let track_res = self.track(occurrent, false, false);
         if let TraRes::Ok(l) = track_res {
             let ct = l.ct;
             let ct = unsafe { ct.unwrap_unchecked() };
@@ -536,12 +538,6 @@ impl Toc {
         } else {
             track_res.ver_res()
         }
-    }
-
-    unsafe fn as_mut(&self) -> &mut Self {
-        let ptr: *const Self = self;
-        let mut_ptr: *mut Self = core::mem::transmute(ptr);
-        mut_ptr.as_mut().unwrap()
     }
 
     /// Used to put new value for `occurrent` occurrences.
@@ -621,7 +617,7 @@ impl Toc {
     // - TC: Ω(s) when `tracing = true`, ϴ(s) otherwise
     // - SC: ϴ(s) when `tracing = true`, ϴ(0) otherwise
     fn track(
-        &mut self,
+        &self,
         mut occurrent: impl Iterator<Item = char>,
         tracing: bool,
         okmut: bool,
@@ -637,16 +633,16 @@ impl Toc {
         let ix = &self.ix;
         let tr = self.tr.get_mut();
 
-        let mut letter = &mut self.rt[ix(c)];
+        let mut letter = &self.rt[ix(c)];
 
         loop {
             if tracing {
-                tr.push(letter)
+                tr.push(letter.to_mut_ptr())
             }
 
             if let Some(c) = occurrent.next() {
-                if let Some(ab) = letter.ab.as_mut() {
-                    letter = &mut ab[ix(c)];
+                if let Some(ab) = letter.ab.as_ref() {
+                    letter = &ab[ix(c)];
                 } else {
                     return TraRes::UnknownForAbsentPath;
                 }
@@ -657,7 +653,8 @@ impl Toc {
 
         if letter.ct() {
             if okmut {
-                TraRes::OkMut(letter)
+                let l_mut = unsafe { letter.to_mut_ptr().as_mut().unwrap_unchecked() };
+                TraRes::OkMut(l_mut)
             } else {
                 TraRes::Ok(letter)
             }
@@ -1382,14 +1379,6 @@ mod tests_of_units {
             }
         }
 
-        #[test]
-        fn as_mut() {
-            let toc = Toc::new();
-            let toc_ptr = &toc as *const Toc;
-            let toc_mut = unsafe { toc.as_mut() };
-            assert_eq!(toc_ptr as usize, toc_mut as *mut Toc as usize);
-        }
-
         mod put {
             use crate::{Toc, VerRes};
 
@@ -1570,7 +1559,7 @@ mod tests_of_units {
 
             #[test]
             fn zero_occurrent() {
-                let mut toc = Toc::new();
+                let toc = Toc::new();
                 let res = toc.track("".chars(), false, false);
                 assert_eq!(TraRes::ZeroLen, res);
             }
