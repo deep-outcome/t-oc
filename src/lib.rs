@@ -687,10 +687,14 @@ impl Toc {
 
     /// Used to clear tree.
     ///
+    /// Return value is count of occurrents in tree before clearing.
+    ///
     /// TC: Θ(n) where n is count of nodes in tree.
-    pub fn clr(&mut self) {
+    pub fn clr(&mut self) -> usize {
         self.rt = ab(self.al);
+        let ct = self.ct;
         self.ct = 0;
+        ct
     }
 
     /// Used to acquire count of occurrents in tree.
@@ -1704,7 +1708,7 @@ mod tests_of_units {
 
             let mut toc = Toc::new();
             _ = toc.add(key(), None);
-            toc.clr();
+            assert_eq!(1, toc.clr());
 
             assert_eq!(VerRes::Unknown, toc.acq(key()));
             assert_eq!(ab(ALPHABET_LEN), toc.rt);
