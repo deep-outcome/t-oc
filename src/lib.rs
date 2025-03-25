@@ -405,7 +405,7 @@ impl Toc {
     ///         1 => '|',
     ///         _ => panic!(),
     ///     }
-    /// }    
+    /// }
     ///
     /// let ab_len = 2;
     ///
@@ -542,7 +542,7 @@ impl Toc {
 
     /// Used to put new value for `occurrent` occurrences.
     ///
-    /// If `VerRes::Ok(usize)`, `usize` is previous value.    
+    /// If `VerRes::Ok(usize)`, `usize` is previous value.
     pub fn put(&mut self, occurrent: impl Iterator<Item = char>, val: usize) -> VerRes {
         let track_res = self.track(occurrent, false, true);
 
@@ -667,10 +667,19 @@ impl Toc {
     ///
     /// Extraction is alphabetically ordered. Does not clear tree. Use `fn clr` for clearing.
     ///
+    /// Return value is `None` for empty `Toc`.
+    ///
     /// - TC: Ω(n) where n is count of nodes in tree.
     /// - SC: Θ(s) where s is occurrent lengths summation.
-    pub fn ext(&self) -> Vec<(String, usize)> {
+    ///
+    /// Returned set can be overcapacitated, i.e. its capacity
+    /// will not be shrunken according to its length.
+    pub fn ext(&self) -> Option<Vec<(String, usize)>> {
         if let Some(re) = self.re {
+            if self.ct == 0 {
+                return None;
+            }
+
             // capacity is prebuffered to 1000
             let mut buff = String::with_capacity(1000);
 
@@ -678,8 +687,7 @@ impl Toc {
             let mut res = Vec::with_capacity(1000);
 
             ext(&self.rt, &mut buff, re, &mut res);
-            res.shrink_to_fit();
-            res
+            Some(res)
         } else {
             panic!("This method is unsupported when `new_with` `re` parameter is provided with `None`.");
         }
@@ -1664,7 +1672,7 @@ mod tests_of_units {
 
             #[test]
             fn basic_test() {
-                let test = vec![
+                let proof = vec![
                     (String::from("AA"), 13),
                     (String::from("AzBq"), 11),
                     (String::from("By"), 329),
@@ -1678,16 +1686,20 @@ mod tests_of_units {
                 ];
 
                 let mut toc = Toc::new();
-                for t in test.iter() {
-                    _ = toc.add(t.0.chars(), Some(t.1));
+                for p in proof.iter() {
+                    _ = toc.add(p.0.chars(), Some(p.1));
                 }
 
                 let ext = toc.ext();
-                assert_eq!(test, ext);
-                assert!(ext.capacity() < 1000);
+                assert_eq!(true, ext.is_some());
 
-                for t in test.iter() {
-                    assert_eq!(VerRes::Ok(t.1), toc.acq(t.0.chars()));
+                let ext = ext.unwrap();
+                assert_eq!(proof.len(), ext.len());
+                assert_eq!(proof, ext);
+                assert_eq!(true, ext.capacity() >= 1000);
+
+                for p in proof.iter() {
+                    assert_eq!(VerRes::Ok(p.1), toc.acq(p.0.chars()));
                 }
             }
 
@@ -1697,6 +1709,12 @@ mod tests_of_units {
             )]
             fn re_not_provided() {
                 _ = Toc::new_with(ix, None, 0).ext()
+            }
+
+            #[test]
+            fn empty_tree() {
+                let toc = Toc::new();
+                assert_eq!(None, toc.ext());
             }
         }
 
