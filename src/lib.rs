@@ -580,7 +580,7 @@ impl Toc {
 
     fn rem_actual(&mut self) -> usize {
         let mut trace = self.tr.iter().map(|x| unsafe { x.as_mut() }.unwrap());
-        let entry = trace.next_back().unwrap();
+        let entry = unsafe { trace.next_back().unwrap_unchecked() };
 
         let ct = entry.ct.take();
 
@@ -1744,5 +1744,5 @@ mod tests_of_units {
     }
 }
 
-// cargo test --features test-ext --release
-// cargo test --release
+// cargo fmt && cargo test --features test-ext --release
+// cargo fmt && cargo test --release
