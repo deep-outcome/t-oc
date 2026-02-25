@@ -313,7 +313,7 @@ impl<'a> TraRes<'a> {
 
 // TC: Ω(n ⋅ alphabet size) ⇒ Ω(n), n = nodes count
 // SC: Θ(s + n) ⇒ Θ(s), n = nodes count, s = key lengths sum
-// to lower estimation add unpredictible count of string clonings
+// to lower estimation add unpredictable count of string clonings
 // and buffers (capacity-) reallocations
 fn ext(ab: &Alphabet, buff: &mut String, re: Re, o: &mut Vec<(String, usize)>) {
     for ix in 0..ab.len() {
