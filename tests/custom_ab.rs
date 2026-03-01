@@ -41,8 +41,8 @@ fn test() {
         _ = toc.add(UsizeCharIterator::new(n), None);
     }
 
-    assert_eq!(1, toc.acq(UsizeCharIterator::new(0)).uproot());
-    assert_eq!(2, toc.acq(UsizeCharIterator::new(2)).uproot());
-    assert_eq!(2, toc.acq(UsizeCharIterator::new(100)).uproot());
-    assert_eq!(1, toc.acq(UsizeCharIterator::new(9999)).uproot());
+    assert_eq!(1, toc.acq(UsizeCharIterator::new(0)).unwrap());
+    assert_eq!(2, toc.acq(UsizeCharIterator::new(2)).unwrap());
+    assert_eq!(2, toc.acq(UsizeCharIterator::new(100)).unwrap());
+    assert_eq!(1, toc.acq(UsizeCharIterator::new(9999)).unwrap());
 }

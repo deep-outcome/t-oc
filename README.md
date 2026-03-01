@@ -18,9 +18,9 @@ let occurrent = "true";
 _ = toc.add(occurrent.chars(), None);
 _ = toc.add(true.to_string().chars(), None);
 
-assert_eq!(2, toc.acq(occurrent.chars()).uproot());
+assert_eq!(2, toc.acq(occurrent.chars()).unwrap());
 toc.put(occurrent.chars(), 15);
-assert_eq!(15, toc.acq(occurrent.chars()).uproot());
+assert_eq!(15, toc.acq(occurrent.chars()).unwrap());
 
 let catch = catch_unwind(move|| _ = toc.add("#&%".chars(), None));
 assert!(catch.is_err());
@@ -76,9 +76,9 @@ fn test() {
         _ = toc.add(UsizeCharIterator::new(n), None);
     }
 
-    assert_eq!(1, toc.acq(UsizeCharIterator::new(0)).uproot());
-    assert_eq!(2, toc.acq(UsizeCharIterator::new(2)).uproot());
-    assert_eq!(2, toc.acq(UsizeCharIterator::new(100)).uproot());
-    assert_eq!(1, toc.acq(UsizeCharIterator::new(9999)).uproot());
+    assert_eq!(1, toc.acq(UsizeCharIterator::new(0)).unwrap());
+    assert_eq!(2, toc.acq(UsizeCharIterator::new(2)).unwrap());
+    assert_eq!(2, toc.acq(UsizeCharIterator::new(100)).unwrap());
+    assert_eq!(1, toc.acq(UsizeCharIterator::new(9999)).unwrap());
 }
 ```

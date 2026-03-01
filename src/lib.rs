@@ -4,6 +4,11 @@
 
 use std::vec::Vec;
 
+/// Versatile result type used by tree entry operations.
+pub type VerRes = Result<usize, KeyError>;
+/// Addition result type used by [`Toc::add`] operation.
+pub type AddRes = Result<Option<usize>, KeyError>;
+
 use uc::UC;
 mod uc {
     use std::{cell::UnsafeCell, ops::Deref};
@@ -187,106 +192,13 @@ pub mod english_letters {
     }
 }
 
-///  Addition result enumeration.
-#[derive(Debug)]
-#[derive(PartialEq, Eq)]
-pub enum AddRes {
-    /// Addition accomplished. Optionally carries previous value, based on its existence.
-    Ok(Option<usize>),
-    /// Attempt to add zero occurrent.
-    ZeroLen,
-}
-
-impl AddRes {
-    /// Returns `true` only for `AddRes::Ok(_)`.
-    pub const fn is_ok(&self) -> bool {
-        match self {
-            | AddRes::Ok(_) => true,
-            | _ => false,
-        }
-    }
-
-    /// Returns `true` only for `AddRes::Ok(Some(_))`.
-    pub const fn is_ok_some(&self) -> bool {
-        if let AddRes::Ok(opt) = self {
-            if let Some(_) = opt {
-                return true;
-            }
-        }
-
-        false
-    }
-
-    /// Returns `usize` of `AddRes::Ok(Some(usize))` or _panics_ if:
-    /// - not that variant
-    /// - `Option<usize>` is `None`
-    pub const fn uproot_ok_some(&self) -> usize {
-        if let AddRes::Ok(opt) = self {
-            if let Some(n) = opt {
-                return *n;
-            }
-        }
-
-        panic!("Not AddRes::Ok(Some(_)) variant.")
-    }
-
-    /// Returns `usize` of `AddRes::Ok(Some(usize))` and does not _panic_ (UB) if:
-    /// - not that variant
-    /// - `Option<usize>` is `None`
-    ///
-    /// Check with `std::hint::unreachable_unchecked` for more information.
-    pub const unsafe fn uproot_ok_some_unchecked(&self) -> usize {
-        if let AddRes::Ok(opt) = self {
-            if let Some(n) = opt {
-                return *n;
-            }
-        }
-        // SAFETY: the safety contract must be upheld by the caller.
-        unsafe { std::hint::unreachable_unchecked() }
-    }
-}
-
-/// Versatile result enumeration.
-///
-/// Used by various methods in versatile way.
-#[derive(Debug)]
-#[derive(PartialEq, Eq)]
-pub enum VerRes {
-    /// Operation accomplished.
-    Ok(usize),
+/// Key error type used by tree entry operations.
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum KeyError {
     /// Zero occurrent usage.
     ZeroLen,
     /// Unknown occurrent usage.
     Unknown,
-}
-
-impl VerRes {
-    /// Returns `true` only for `VerRes::Ok(_)`.
-    pub const fn is_ok(&self) -> bool {
-        match self {
-            | VerRes::Ok(_) => true,
-            | _ => false,
-        }
-    }
-
-    /// Returns `usize` of `VerRes::Ok(usize)` or _panics_ if not that variant.
-    pub const fn uproot(&self) -> usize {
-        match self {
-            | VerRes::Ok(res) => *res,
-            | _ => panic!("Value is not `Ok(usize)` variant."),
-        }
-    }
-
-    /// Returns `usize` of `VerRes::Ok(usize)` and does not _panic_ if not that variant (UB).
-    ///
-    /// Check with `std::hint::unreachable_unchecked` for more information.
-    pub const unsafe fn uproot_unchecked(&self) -> usize {
-        match self {
-            | VerRes::Ok(res) => *res,
-            // SAFETY: the safety contract must be upheld by the caller.
-            | _ => unsafe { std::hint::unreachable_unchecked() },
-        }
-    }
 }
 
 #[cfg_attr(test, derive(PartialEq, Debug))]
@@ -299,12 +211,12 @@ enum TraRes<'a> {
 }
 
 impl<'a> TraRes<'a> {
-    fn ver_res(&self) -> VerRes {
+    fn ver_res(&self) -> KeyError {
         let p = || panic!("Unsupported");
 
         return match self {
-            | TraRes::ZeroLen => VerRes::ZeroLen,
-            | TraRes::UnknownForNotEntry | TraRes::UnknownForAbsentPath => VerRes::Unknown,
+            | TraRes::ZeroLen => KeyError::ZeroLen,
+            | TraRes::UnknownForNotEntry | TraRes::UnknownForAbsentPath => KeyError::Unknown,
             | TraRes::Ok(_) => p(),
             | TraRes::OkMut(_) => p(),
         };
@@ -348,9 +260,9 @@ fn ext(ab: &Alphabet, buff: &mut String, re: Re, o: &mut Vec<(String, usize)>) {
 /// _ = toc.add(occurrent.chars(), None);
 /// _ = toc.add(true.to_string().chars(), None);
 ///
-/// assert_eq!(2, toc.acq(occurrent.chars()).uproot());
+/// assert_eq!(2, toc.acq(occurrent.chars()).unwrap());
 /// toc.put(occurrent.chars(), 15);
-/// assert_eq!(15, toc.acq(occurrent.chars()).uproot());
+/// assert_eq!(15, toc.acq(occurrent.chars()).unwrap());
 ///
 /// let catch = catch_unwind(move|| _ = toc.add("#&%".chars(), None));
 /// assert!(catch.is_err());
@@ -417,8 +329,8 @@ impl Toc {
     /// _ = toc.add(a.chars(), None);
     /// _ = toc.add(b.chars(), None);
     /// _ = toc.add(aba.chars(), None);
-    /// assert_eq!(2, toc.acq(a.chars()).uproot());
-    /// assert_eq!(1, toc.acq(aba.chars()).uproot());
+    /// assert_eq!(2, toc.acq(a.chars()).unwrap());
+    /// assert_eq!(1, toc.acq(aba.chars()).unwrap());
     pub fn new_with(ix: Ix, re: Option<Re>, ab_len: usize) -> Self {
         Self {
             rt: ab(ab_len),
@@ -480,18 +392,20 @@ impl Toc {
 
     /// Used to add occurence to tree.
     ///
-    /// Counter is of word size. Add overflow is wrapped using `wrapping_add`.
+    /// Counter is of word size. Add overflow is wrapped using [`usize::wrapping_add`].
     ///
     /// Optional `val` parameter can be used to insert exact value.
     ///
-    /// Return value is `AddRes::Ok(Option<usize>)` for non-zero `occurrent` and holds previous value, if there was some.
+    /// Return value is `Ok(Option<usize>)` for non-zero occurent and holds previous value, if there was some.
+    ///
+    /// Only invalid key classified is zero-length key.
     ///
     /// - SC: Θ(q) where q is number of unique nodes, i.e. `char`s in respective branches.
     pub fn add(&mut self, mut occurrent: impl Iterator<Item = char>, val: Option<usize>) -> AddRes {
         let c = occurrent.next();
 
         if c.is_none() {
-            return AddRes::ZeroLen;
+            return Err(KeyError::ZeroLen);
         }
 
         let c = unsafe { c.unwrap_unchecked() };
@@ -523,41 +437,41 @@ impl Toc {
             }
         });
 
-        AddRes::Ok(ct)
+        Ok(ct)
     }
 
     /// Used to acquire value for `occurrent`.
     ///
-    /// If `VerRes::Ok(usize)`, `usize` is `occurrent` occurrences count.
+    /// If `Ok(usize)`, `usize` is `occurrent` occurrences count.
     pub fn acq(&self, occurrent: impl Iterator<Item = char>) -> VerRes {
         let track_res = self.track(occurrent, false, false);
         if let TraRes::Ok(l) = track_res {
             let ct = l.ct;
             let ct = unsafe { ct.unwrap_unchecked() };
-            VerRes::Ok(ct)
+            Ok(ct)
         } else {
-            track_res.ver_res()
+            Err(track_res.ver_res())
         }
     }
 
     /// Used to put new value for `occurrent` occurrences.
     ///
-    /// If `VerRes::Ok(usize)`, `usize` is previous value.
+    /// If `Ok(usize)`, `usize` is previous value.
     pub fn put(&mut self, occurrent: impl Iterator<Item = char>, val: usize) -> VerRes {
         let track_res = self.track(occurrent, false, true);
 
         if let TraRes::OkMut(l) = track_res {
             let old = l.ct.replace(val);
             let old = unsafe { old.unwrap_unchecked() };
-            VerRes::Ok(old)
+            Ok(old)
         } else {
-            track_res.ver_res()
+            Err(track_res.ver_res())
         }
     }
 
     /// Used to remove `occurrent` from tree.
     ///
-    /// If `VerRes::Ok(usize)`, `usize` is `occurrent` occurrences count.
+    /// If `Ok(usize)`, `usize` is `occurrent` occurrences count.
     ///
     /// - _c_ is count of `char`s iterated over.
     /// - TC: Ω(c) or ϴ(c) (backtracing buffer capacity dependent complexity).
@@ -569,9 +483,9 @@ impl Toc {
         let res = if let TraRes::Ok(_) = track_res {
             let ct = Self::rem_actual(self);
             self.ct -= 1;
-            VerRes::Ok(ct)
+            Ok(ct)
         } else {
-            track_res.ver_res()
+            Err(track_res.ver_res())
         };
 
         self.tr.get_mut().clear();
@@ -869,85 +783,6 @@ mod tests_of_units {
         }
     }
 
-    mod add_res {
-        use crate::AddRes;
-
-        #[test]
-        fn is_ok() {
-            assert_eq!(true, AddRes::Ok(None).is_ok());
-            assert_eq!(false, AddRes::ZeroLen.is_ok());
-        }
-
-        #[test]
-        fn is_ok_some_some() {
-            assert_eq!(true, AddRes::Ok(Some(3)).is_ok_some());
-        }
-
-        #[test]
-        fn is_ok_some_none() {
-            assert_eq!(false, AddRes::Ok(None).is_ok_some());
-        }
-
-        #[test]
-        fn is_ok_some_not_ok() {
-            assert_eq!(false, AddRes::ZeroLen.is_ok_some());
-        }
-
-        #[test]
-        fn uproot_ok_some_some() {
-            let val = 3;
-            assert_eq!(val, AddRes::Ok(Some(val)).uproot_ok_some());
-        }
-
-        #[test]
-        #[should_panic(expected = "Not AddRes::Ok(Some(_)) variant.")]
-        fn uproot_ok_some_none() {
-            _ = AddRes::Ok(None).uproot_ok_some()
-        }
-
-        #[test]
-        #[should_panic(expected = "Not AddRes::Ok(Some(_)) variant.")]
-        fn uproot_ok_some_not_ok() {
-            _ = AddRes::ZeroLen.uproot_ok_some()
-        }
-
-        #[test]
-        fn uproot_ok_some_unchecked() {
-            let val = 3;
-            let uproot = unsafe { AddRes::Ok(Some(val)).uproot_ok_some_unchecked() };
-            assert_eq!(val, uproot);
-        }
-    }
-
-    mod ver_res {
-        use crate::VerRes;
-
-        #[test]
-        fn is_ok() {
-            assert_eq!(true, VerRes::Ok(0).is_ok());
-            assert_eq!(false, VerRes::Unknown.is_ok());
-            assert_eq!(false, VerRes::ZeroLen.is_ok());
-        }
-
-        #[test]
-        fn uproot() {
-            assert_eq!(33, VerRes::Ok(33).uproot());
-        }
-
-        #[test]
-        #[should_panic(expected = "Value is not `Ok(usize)` variant.")]
-        fn uproot_panic() {
-            VerRes::ZeroLen.uproot();
-        }
-
-        #[test]
-        fn uproot_unchecked() {
-            const VAL: usize = 77;
-            let test = unsafe { VerRes::Ok(VAL).uproot_unchecked() };
-            assert_eq!(VAL, test);
-        }
-    }
-
     mod ext {
 
         type Nest = (char, usize);
@@ -1075,13 +910,14 @@ mod tests_of_units {
     }
 
     mod track_res {
-        use crate::{TraRes, Letter, VerRes};
+        use crate::{TraRes, Letter};
+        use crate::KeyError::{ZeroLen, Unknown};
 
         #[test]
         fn ver_res_convertible() {
-            assert_eq!(VerRes::ZeroLen, TraRes::ZeroLen.ver_res());
-            assert_eq!(VerRes::Unknown, TraRes::UnknownForAbsentPath.ver_res());
-            assert_eq!(VerRes::Unknown, TraRes::UnknownForNotEntry.ver_res());
+            assert_eq!(ZeroLen, TraRes::ZeroLen.ver_res());
+            assert_eq!(Unknown, TraRes::UnknownForAbsentPath.ver_res());
+            assert_eq!(Unknown, TraRes::UnknownForNotEntry.ver_res());
         }
 
         use std::{ops::Deref, panic::catch_unwind};
@@ -1191,7 +1027,8 @@ mod tests_of_units {
         }
 
         mod add {
-            use crate::{Toc, AddRes};
+            use crate::Toc;
+            use crate::KeyError::ZeroLen;
             use crate::english_letters::ix;
 
             #[test]
@@ -1199,7 +1036,7 @@ mod tests_of_units {
                 let entry = || "impreciseness".chars();
 
                 let mut toc = Toc::new();
-                assert_eq!(AddRes::Ok(None), toc.add(entry(), None));
+                assert_eq!(Ok(None), toc.add(entry(), None));
                 assert_eq!(1, toc.ct);
 
                 let chars: Vec<char> = entry().collect();
@@ -1230,14 +1067,14 @@ mod tests_of_units {
             #[test]
             fn zero_occurrent() {
                 let mut toc = Toc::new();
-                assert_eq!(AddRes::ZeroLen, toc.add("".chars(), None));
+                assert_eq!(Err(ZeroLen), toc.add("".chars(), None));
                 assert_eq!(0, toc.ct);
             }
 
             #[test]
             fn singular_occurrent() {
                 let mut toc = Toc::new();
-                assert_eq!(AddRes::Ok(None), toc.add("a".chars(), None));
+                assert_eq!(Ok(None), toc.add("a".chars(), None));
                 assert_eq!(Some(1), toc.rt[ix('a')].ct);
                 assert_eq!(1, toc.ct);
             }
@@ -1247,10 +1084,10 @@ mod tests_of_units {
                 let entry = || "impreciseness".chars();
 
                 let mut toc = Toc::new();
-                assert_eq!(AddRes::Ok(None), toc.add(entry(), None));
+                assert_eq!(Ok(None), toc.add(entry(), None));
                 assert_eq!(1, toc.ct);
 
-                assert_eq!(AddRes::Ok(Some(1)), toc.add(entry(), None));
+                assert_eq!(Ok(Some(1)), toc.add(entry(), None));
                 assert_eq!(1, toc.ct);
 
                 let chars: Vec<char> = entry().collect();
@@ -1284,10 +1121,10 @@ mod tests_of_units {
                 const VAL: usize = 15;
 
                 let mut toc = Toc::new();
-                assert_eq!(AddRes::Ok(None), toc.add(entry(), Some(VAL)));
+                assert_eq!(Ok(None), toc.add(entry(), Some(VAL)));
                 assert_eq!(1, toc.ct);
 
-                assert_eq!(VerRes::Ok(VAL), toc.acq(entry()));
+                assert_eq!(Ok(VAL), toc.acq(entry()));
             }
 
             #[test]
@@ -1299,13 +1136,11 @@ mod tests_of_units {
                 _ = toc.add(entry(), None);
                 assert_eq!(1, toc.ct);
 
-                assert_eq!(AddRes::Ok(Some(1)), toc.add(entry(), Some(VAL)));
+                assert_eq!(Ok(Some(1)), toc.add(entry(), Some(VAL)));
                 assert_eq!(1, toc.ct);
 
-                assert_eq!(VerRes::Ok(VAL), toc.acq(entry()));
+                assert_eq!(Ok(VAL), toc.acq(entry()));
             }
-
-            use crate::VerRes;
 
             #[test]
             #[allow(non_snake_case)]
@@ -1342,13 +1177,13 @@ mod tests_of_units {
                         } else {
                             None
                         };        
-                        assert_eq!(AddRes::Ok(prev), res);
+                        assert_eq!(Ok(prev), res);
                     }
                 }
 
                 for (s, c) in strs {
                     let res = toc.acq(s.chars());
-                    assert_eq!(VerRes::Ok(c), res);                 
+                    assert_eq!(Ok(c), res);                 
                 }
                 
                 assert_eq!(strs.len(), toc.ct);
@@ -1363,13 +1198,14 @@ mod tests_of_units {
                 _ = toc.add(entry(), None);
                 _ = toc.put(entry(), usize::MAX);
                 _ = toc.add(entry(), None);
-                assert_eq!(VerRes::Ok(0), toc.acq(entry()));
+                assert_eq!(Ok(0), toc.acq(entry()));
                 assert_eq!(1, toc.ct);
             }
         }
 
         mod acq {
-            use crate::{Toc, VerRes};
+            use crate::Toc;
+            use crate::KeyError::{ZeroLen, Unknown};
 
             #[test]
             #[allow(non_upper_case_globals)]
@@ -1380,19 +1216,20 @@ mod tests_of_units {
                 let mut toc = Toc::new();
                 _ = toc.add(a(), None);
 
-                assert_eq!(VerRes::Ok(1), toc.acq(a()));
-                assert_eq!(VerRes::Unknown, toc.acq(b()));
+                assert_eq!(Ok(1), toc.acq(a()));
+                assert_eq!(Err(Unknown), toc.acq(b()));
             }
 
             #[test]
             fn zero_occurrent() {
                 let toc = Toc::new();
-                assert_eq!(VerRes::ZeroLen, toc.acq("".chars()));
+                assert_eq!(Err(ZeroLen), toc.acq("".chars()));
             }
         }
 
         mod put {
-            use crate::{Toc, VerRes};
+            use crate::Toc;
+            use crate::KeyError::{ZeroLen, Unknown};
 
             #[test]
             #[allow(non_upper_case_globals)]
@@ -1403,20 +1240,21 @@ mod tests_of_units {
                 let mut toc = Toc::new();
                 _ = toc.add(a(), None);
 
-                assert_eq!(VerRes::Ok(1), toc.put(a(), 3));
-                assert_eq!(VerRes::Ok(3), toc.acq(a()));
-                assert_eq!(VerRes::Unknown, toc.put(b(), 3));
+                assert_eq!(Ok(1), toc.put(a(), 3));
+                assert_eq!(Ok(3), toc.acq(a()));
+                assert_eq!(Err(Unknown), toc.put(b(), 3));
             }
 
             #[test]
             fn zero_occurrent() {
                 let mut toc = Toc::new();
-                assert_eq!(VerRes::ZeroLen, toc.put("".chars(), 3));
+                assert_eq!(Err(ZeroLen), toc.put("".chars(), 3));
             }
         }
 
         mod rem {
-            use crate::{Toc, VerRes};
+            use crate::Toc;
+            use crate::KeyError::{ZeroLen, Unknown};
 
             #[test]
             fn known_unknown() {
@@ -1426,13 +1264,13 @@ mod tests_of_units {
                 let mut toc = Toc::new();
                 _ = toc.add(known(), None);
 
-                assert_eq!(VerRes::Unknown, toc.rem(unknown()));
+                assert_eq!(Err(Unknown), toc.rem(unknown()));
                 assert_eq!(0, toc.tr.len());
 
                 assert_eq!(1, toc.ct());
 
-                assert_eq!(VerRes::Ok(1), toc.rem(known()));
-                assert_eq!(VerRes::Unknown, toc.acq(known()));
+                assert_eq!(Ok(1), toc.rem(known()));
+                assert_eq!(Err(Unknown), toc.acq(known()));
                 assert_eq!(0, toc.tr.len());
 
                 assert_eq!(0, toc.ct());
@@ -1441,12 +1279,13 @@ mod tests_of_units {
             #[test]
             fn zero_occurrent() {
                 let mut toc = Toc::new();
-                assert_eq!(VerRes::ZeroLen, toc.rem("".chars()));
+                assert_eq!(Err(ZeroLen), toc.rem("".chars()));
             }
         }
 
         mod rem_actual {
-            use crate::{Toc, VerRes, TraRes};
+            use crate::{Toc, TraRes};
+            use crate::KeyError::Unknown;
             use crate::english_letters::ix;
 
             #[test]
@@ -1501,8 +1340,8 @@ mod tests_of_units {
                 _ = toc.track(inner(), true, false);
 
                 assert_eq!(1, Toc::rem_actual(&mut toc));
-                assert_eq!(VerRes::Unknown, toc.acq(inner()));
-                assert_eq!(VerRes::Ok(1), toc.acq(outer()));
+                assert_eq!(Err(Unknown), toc.acq(inner()));
+                assert_eq!(Ok(1), toc.acq(outer()));
             }
 
             #[test]
@@ -1518,8 +1357,8 @@ mod tests_of_units {
                 _ = toc.track(test(), true, false);
 
                 assert_eq!(1, Toc::rem_actual(&mut toc));
-                assert_eq!(VerRes::Unknown, toc.acq(test()));
-                assert_eq!(VerRes::Ok(1), toc.acq(peer()));
+                assert_eq!(Err(Unknown), toc.acq(test()));
+                assert_eq!(Ok(1), toc.acq(peer()));
             }
 
             #[test]
@@ -1535,8 +1374,8 @@ mod tests_of_units {
                 _ = toc.track(test(), true, false);
 
                 assert_eq!(1, Toc::rem_actual(&mut toc));
-                assert_eq!(VerRes::Unknown, toc.acq(test()));
-                assert_eq!(VerRes::Ok(1), toc.acq(peer()));
+                assert_eq!(Err(Unknown), toc.acq(test()));
+                assert_eq!(Ok(1), toc.acq(peer()));
             }
 
             #[test]
@@ -1552,8 +1391,8 @@ mod tests_of_units {
                 _ = toc.track(under(), true, false);
 
                 assert_eq!(1, Toc::rem_actual(&mut toc));
-                assert_eq!(VerRes::Unknown, toc.acq(under()));
-                assert_eq!(VerRes::Ok(1), toc.acq(above()));
+                assert_eq!(Err(Unknown), toc.acq(under()));
+                assert_eq!(Ok(1), toc.acq(above()));
 
                 let res = toc.track(above(), false, false);
                 if let TraRes::Ok(l) = res {
@@ -1667,7 +1506,7 @@ mod tests_of_units {
         }
 
         mod ext {
-            use crate::{Toc, VerRes};
+            use crate::Toc;
             use crate::english_letters::ix;
 
             #[test]
@@ -1699,7 +1538,7 @@ mod tests_of_units {
                 assert_eq!(true, ext.capacity() >= 1000);
 
                 for p in proof.iter() {
-                    assert_eq!(VerRes::Ok(p.1), toc.acq(p.0.chars()));
+                    assert_eq!(Ok(p.1), toc.acq(p.0.chars()));
                 }
             }
 
@@ -1718,7 +1557,7 @@ mod tests_of_units {
             }
         }
 
-        use crate::VerRes;
+        use crate::KeyError::Unknown;
 
         #[test]
         fn clr() {
@@ -1728,7 +1567,7 @@ mod tests_of_units {
             _ = toc.add(key(), None);
             assert_eq!(1, toc.clr());
 
-            assert_eq!(VerRes::Unknown, toc.acq(key()));
+            assert_eq!(Err(Unknown), toc.acq(key()));
             assert_eq!(ab(ALPHABET_LEN), toc.rt);
             assert_eq!(0, toc.ct);
         }
