@@ -12,6 +12,8 @@ pub type AddRes = Result<Option<usize>, KeyError>;
 mod uc;
 use uc::UC;
 
+mod aide;
+
 /// `Letter` is `Alphabet` element, represents tree node.
 #[cfg_attr(test, derive(PartialEq))]
 struct Letter {
@@ -309,9 +311,9 @@ impl Toc {
         let cp = tr.capacity();
 
         if cp < approx_cap {
-            tr.get_mut().reserve(approx_cap);
+            tr.reserve(approx_cap);
         } else if cp > approx_cap {
-            *tr = UC::new(Vec::with_capacity(approx_cap));
+            *tr.aq_mut() = Vec::with_capacity(approx_cap);
         }
 
         tr.capacity()
@@ -422,7 +424,7 @@ impl Toc {
             Err(track_res.ver_res())
         };
 
-        self.tr.get_mut().clear();
+        self.tr.clear();
         res
     }
 
@@ -479,7 +481,7 @@ impl Toc {
         let c = unsafe { c.unwrap_unchecked() };
 
         let ix = &self.ix;
-        let tr = self.tr.get_mut();
+        let tr = self.tr.uplift();
 
         let mut letter = &self.rt[ix(c)];
 
@@ -909,7 +911,7 @@ mod tests_of_units {
         }
 
         mod put_trace_cap {
-            use crate::{Toc, uc::UC};
+            use crate::Toc;
 
             #[test]
             fn extend() {
@@ -929,7 +931,7 @@ mod tests_of_units {
                 const OLD_CAP: usize = 50;
 
                 let mut toc = Toc::new();
-                toc.tr = UC::new(Vec::with_capacity(OLD_CAP));
+                *toc.tr = Vec::with_capacity(OLD_CAP);
 
                 let size = toc.put_trace_cap(NEW_CAP);
                 assert!(size >= NEW_CAP && size < OLD_CAP);
@@ -956,7 +958,7 @@ mod tests_of_units {
             let tr = &mut toc.tr;
 
             assert!(tr.capacity() < VAL);
-            tr.get_mut().reserve_exact(VAL);
+            tr.reserve_exact(VAL);
             assert_eq!(VAL, toc.acq_trace_cap());
         }
 
