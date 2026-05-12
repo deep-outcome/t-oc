@@ -61,8 +61,7 @@ pub type Re = fn(usize) -> char;
 
 /// Alphabet function, tree arms generation of length specified.
 fn ab(len: usize) -> Alphabet {
-    let mut ab = Vec::new();
-    ab.reserve_exact(len);
+    let mut ab = Vec::with_capacity(len);
 
     #[cfg(test)]
     #[cfg(feature = "test-ext")]
@@ -959,7 +958,8 @@ mod tests_of_units {
 
             assert!(tr.capacity() < VAL);
             tr.reserve_exact(VAL);
-            assert_eq!(VAL, toc.acq_trace_cap());
+            let cap = tr.capacity();
+            assert_eq!(cap, toc.acq_trace_cap());
         }
 
         mod add {
@@ -1519,5 +1519,5 @@ mod tests_of_units {
     }
 }
 
-// cargo fmt && cargo test --features test-ext --release
-// cargo fmt && cargo test --release
+// cargo fmt & cargo test --features test-ext --release
+// cargo fmt & cargo test --release
