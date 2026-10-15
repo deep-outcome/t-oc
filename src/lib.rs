@@ -40,10 +40,6 @@ impl Letter {
     const fn ct(&self) -> bool {
         self.ct.is_some()
     }
-
-    const fn to_mut_ptr(&self) -> *mut Self {
-        (self as *const Self).cast_mut()
-    }
 }
 
 /// Tree node arms. Consists of `Letter`s.
@@ -208,7 +204,7 @@ fn ext(ab: &Alphabet, buff: &mut String, re: Re, o: &mut Vec<(String, usize)>) {
 /// - SC: Θ(0).
 pub struct Toc {
     // tree root
-    rt: Alphabet,
+    rt: UC<Alphabet>,
     // index fn
     ix: Ix,
     // rev index fn
@@ -268,7 +264,7 @@ impl Toc {
     /// assert_eq!(1, toc.acq(aba.chars()).unwrap());
     pub fn new_with(ix: Ix, re: Option<Re>, ab_len: usize) -> Self {
         Self {
-            rt: ab(ab_len),
+            rt: UC::new(ab(ab_len)),
             ix,
             re,
             al: ab_len,
@@ -482,16 +478,16 @@ impl Toc {
         let ix = &self.ix;
         let tr = self.tr.uplift();
 
-        let mut letter = &self.rt[ix(c)];
+        let mut letter = &mut self.rt.uplift()[ix(c)];
 
         loop {
             if tracing {
-                tr.push(letter.to_mut_ptr())
+                tr.push(letter)
             }
 
             if let Some(c) = occurrent.next() {
-                if let Some(ab) = letter.ab.as_ref() {
-                    letter = &ab[ix(c)];
+                if let Some(ab) = letter.ab.as_mut() {
+                    letter = &mut ab[ix(c)];
                 } else {
                     return TraRes::UnknownForAbsentPath;
                 }
@@ -502,8 +498,7 @@ impl Toc {
 
         if letter.ct() {
             if okmut {
-                let l_mut = unsafe { letter.to_mut_ptr().as_mut().unwrap_unchecked() };
-                TraRes::OkMut(l_mut)
+                TraRes::OkMut(letter)
             } else {
                 TraRes::Ok(letter)
             }
@@ -548,7 +543,7 @@ impl Toc {
     ///
     /// TC: Θ(n) where n is count of nodes in tree.
     pub fn clr(&mut self) -> usize {
-        self.rt = ab(self.al);
+        *self.rt = ab(self.al);
         let ct = self.ct;
         self.ct = 0;
         ct
@@ -901,7 +896,7 @@ mod tests_of_units {
             let ab_len = 10;
             let toc = Toc::new_with(test_ix, Some(test_re), ab_len);
 
-            assert_eq!(ab(ab_len), toc.rt);
+            assert_eq!(ab(ab_len).as_ref(), toc.rt.as_ref());
             assert_eq!(ab_len, toc.al);
             assert_eq!(test_ix as usize, toc.ix as usize);
             assert_eq!(test_re as usize, toc.re.unwrap() as usize);
@@ -979,7 +974,7 @@ mod tests_of_units {
                 let len = chars.len();
                 let last_ix = len - 1;
 
-                let mut sup_ab = &toc.rt;
+                let mut sup_ab = toc.rt.as_ref();
                 for c_ix in 0..len {
                     let c = chars[c_ix];
                     let l = &sup_ab[ix(c)];
@@ -1030,7 +1025,7 @@ mod tests_of_units {
                 let len = chars.len();
                 let last_ix = len - 1;
 
-                let mut sup_ab = &toc.rt;
+                let mut sup_ab = toc.rt.as_ref();
                 for c_ix in 0..len {
                     let c = chars[c_ix];
                     let l = &sup_ab[ix(c)];
@@ -1504,7 +1499,7 @@ mod tests_of_units {
             assert_eq!(1, toc.clr());
 
             assert_eq!(Err(Unknown), toc.acq(key()));
-            assert_eq!(ab(ALPHABET_LEN), toc.rt);
+            assert_eq!(ab(ALPHABET_LEN).as_ref(), toc.rt.as_ref());
             assert_eq!(0, toc.ct);
         }
 
